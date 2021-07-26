@@ -88,7 +88,7 @@ def fetchone(cursor):
 
 
 # Resolve "current_schema" to an actual schema name
-def resolve_schema(schema):
+def resolve_schema(*args):
     """
     Resolve CURRENT_SCHEMA to an actual schema name
     Params:
@@ -96,10 +96,7 @@ def resolve_schema(schema):
     Returns:
         str : Actual schema for CURRENT_SCHEMA or the input schema parameter
     """
-    if schema == CURRENT_SCHEMA:
-        cur = conn_execute('select current_schema as "current_schema";')
-        schema = cur.fetchone()[0]
-
+    schema = conn.get_schema()
     LOG.info(f"Resolve schema is {schema}")
     return schema
 
@@ -492,7 +489,7 @@ class IndexDefinition:
     This is used internally during the conversion process
     """
 
-    INDEX_PARSER = re.compile("(^.+INDEX )(.+)( ON )(.+)( USING.+$)", flags=re.IGNORECASE)
+    INDEX_PARSER = re.compile("(^.+INDEX )(.+)( ON )(.+)( USING.+$)", flags=re.IGNORECASE | re.DOTALL)
     INDEX_NAME_IX = 1
     INDEX_TABLE_IX = -2
 
@@ -506,7 +503,7 @@ class IndexDefinition:
         self.is_unique = indexrec["indisunique"]
         self.definition = indexrec["indexdef"]
 
-        if ";" not in self.definition[:-10]:
+        if ";" not in self.definition[-10:]:
             self.definition += " ;"
 
     def create(self):
@@ -1369,17 +1366,20 @@ select table_name,
         cur = conn_execute(sql, params)
         self.created_partitions = fetchall(cur)
 
+    def _split_column_map(self):
+        return zip(*self.column_map.items())
+
     def __copy_data(self):
         if not self.column_map:
             cols = self.get_table_columns(self.source_schema, self.source_table_name)
             self.column_map = dict(zip(cols, cols))
 
-        c_from = f'"{self.target_schema}"."{self.partitioned_table_name}"'
-        c_to = f'"{self.source_schema}"."{self.source_table_name}"'
+        source_cols, target_cols = self._split_column_map()
+        c_to = f'"{self.target_schema}"."{self.partitioned_table_name}"'
+        c_from = f'"{self.source_schema}"."{self.source_table_name}"'
         LOG.info(f"Copying data from {c_from} to {c_to}")
-        source_cols, target_cols = zip(*self.column_map.items())
         sql = f"""
-INSERT INTO "{self.target_schema}"."{self.partitioned_table_name} ({','.join(target_cols)})"
+INSERT INTO "{self.target_schema}"."{self.partitioned_table_name}" ({','.join(target_cols)})
 SELECT {','.join(source_cols)} FROM "{self.source_schema}"."{self.source_table_name}" ;
 """
         with transaction.atomic():

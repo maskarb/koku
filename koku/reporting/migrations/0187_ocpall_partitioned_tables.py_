@@ -39,9 +39,10 @@ def convert_matview_to_partitioned_table(matview_name, partition_col, pk_def, co
         constraintops={"override": constraints},
         column_map=column_map,
     )
+    return p_converter
     # Push the button, Frank.
-    LOG.info(f"Converting materialized view {matview_name} to a partitioned table")
-    p_converter.convert_to_partition()
+    # LOG.info(f"Converting materialized view {matview_name} to a partitioned table")
+    # p_converter.convert_to_partition()
 
 
 def convert_reporting_ocpall_compute_summary(apps, schema_editor):
@@ -175,7 +176,7 @@ CREATE INDEX ocpall_cost_summary_by_comp_product_code_ilike ON reporting_ocpall_
     cols.remove('id')
     column_map = dict(zip(cols, cols))
 
-    convert_matview_to_partitioned_table(
+    return convert_matview_to_partitioned_table(
         matview_name,
         "usage_start",
         pk_def,
