@@ -48,7 +48,7 @@ def conn_execute(sql, params=None, _conn=conn):
     """
     if sql:
         cursor = _conn.cursor()
-        LOG.debug(f"SQL: {cursor.mogrify(sql, params).decode('utf-8')}")
+        LOG.info(f"SQL: {cursor.mogrify(sql, params).decode('utf-8')}")
         # print(cursor.mogrify(sql, params).decode('utf-8') + '\n', file=SQLFILE, flush=True)
         cursor.execute(sql, params)
         return cursor
@@ -628,9 +628,8 @@ class ConvertToPartition:
         col_def=[],
         target_schema=CURRENT_SCHEMA,
         source_schema=CURRENT_SCHEMA,
-        exclude_indexes=[],
-        include_indexes=[],
-        override_indexes=[],
+        indexops={},
+        constraintops={},
         column_map={},
     ):
         """
@@ -656,8 +655,14 @@ class ConvertToPartition:
         self.relkind_pp = self.__relkind_pretty()
         self.pk_def = pk_def
         self.col_def = col_def
-        self.indexes = override_indexes if override_indexes else self.__get_indexes(include_indexes, exclude_indexes)
-        self.constraints = self.__get_constraints()
+        override_indexes = indexops.get("override", [])
+        # Possible future use
+        # exclude_indexes = indexops.get("exclude", [])
+        # include_indexes = indexops.get("include", [])
+        # self.indexes = override_indexes if override_indexes else self.__get_indexes(include_indexes, exclude_indexes)
+        self.indexes = override_indexes if override_indexes else self.__get_indexes()
+        override_constraints = constraintops.get("override", [])
+        self.constraints = override_constraints if override_constraints else self.__get_constraints()
         self.views = self.__get_views()
         self.__new_trigger = self.detect_new_manager_trigger()
         self.column_map = column_map
@@ -780,10 +785,13 @@ select c.oid::int as constraint_oid,
             if rec["constraint_type"] != "p"
         ]
 
-    def __get_indexes(self, include_indexes=[], exclude_indexes=[]):
-        if include_indexes and all(ix is None for ix in include_indexes):
-            LOG.info(f"Skipping index copy for {self.relkind_pp} {self.source_schema}.{self.source_table_name}")
-            return []
+    def __get_indexes(self):
+        # Possible future use
+        # def __get_indexes(self, include_indexes=[], exclude_indexes=[]):
+        # Possible future use
+        # if include_indexes and all(ix is None for ix in include_indexes):
+        #     LOG.info(f"Skipping index copy for {self.relkind_pp} {self.source_schema}.{self.source_table_name}")
+        #     return []
 
         LOG.info(f"Getting indexes for {self.relkind_pp} {self.source_schema}.{self.source_table_name}")
         sql = """
@@ -816,12 +824,13 @@ select n.nspname::text as "schemaname",
         cur = conn_execute(sql, params)
         res = []
         for rec in fetchall(cur):
-            if exclude_indexes and rec["indexname"] in exclude_indexes:
-                LOG.debug(f"""Excluding index {rec["indexname"]}""")
-                continue
-            if include_indexes and rec["indexname"] not in include_indexes:
-                LOG.debug(f"""Skipping index {rec["indexname"]}""")
-                continue
+            # Possible future use
+            # if exclude_indexes and rec["indexname"] in exclude_indexes:
+            #     LOG.debug(f"""Excluding index {rec["indexname"]}""")
+            #     continue
+            # if include_indexes and rec["indexname"] not in include_indexes:
+            #     LOG.debug(f"""Skipping index {rec["indexname"]}""")
+            #     continue
             res.append(IndexDefinition(self.target_schema, self.partitioned_table_name, rec))
 
         return res
