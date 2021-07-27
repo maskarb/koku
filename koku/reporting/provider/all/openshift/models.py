@@ -47,7 +47,7 @@ class OCPAllCostLineItemDailySummary(models.Model):
             # Function: (upper(product_family) gin_trgm_ops)
         ]
 
-    id = models.IntegerField(primary_key=True)
+    id = models.UUIDField(primary_key=True)
 
     # The infrastructure provider type
     source_type = models.TextField()
@@ -121,7 +121,7 @@ class OCPAllCostSummary(models.Model):
         db_table = "reporting_ocpall_cost_summary"
         managed = False
 
-    id = models.IntegerField(primary_key=True)
+    id = models.UUIDField(primary_key=True)
 
     usage_start = models.DateField(null=False)
 
@@ -151,7 +151,7 @@ class OCPAllCostSummaryByAccount(models.Model):
         db_table = "reporting_ocpall_cost_summary_by_account"
         managed = False
 
-    id = models.IntegerField(primary_key=True)
+    id = models.UUIDField(primary_key=True)
 
     usage_start = models.DateField(null=False)
 
@@ -185,7 +185,7 @@ class OCPAllCostSummaryByService(models.Model):
         db_table = "reporting_ocpall_cost_summary_by_service"
         managed = False
 
-    id = models.IntegerField(primary_key=True)
+    id = models.UUIDField(primary_key=True)
 
     usage_start = models.DateField(null=False)
 
@@ -223,7 +223,7 @@ class OCPAllCostSummaryByRegion(models.Model):
         db_table = "reporting_ocpall_cost_summary_by_region"
         managed = False
 
-    id = models.IntegerField(primary_key=True)
+    id = models.UUIDField(primary_key=True)
 
     usage_start = models.DateField(null=False)
 
@@ -259,7 +259,7 @@ class OCPAllComputeSummary(models.Model):
         db_table = "reporting_ocpall_compute_summary"
         managed = False
 
-    id = models.IntegerField(primary_key=True)
+    id = models.UUIDField(primary_key=True)
 
     cluster_id = models.CharField(max_length=50, null=True)
 
@@ -301,7 +301,7 @@ class OCPAllDatabaseSummary(models.Model):
         db_table = "reporting_ocpall_database_summary"
         managed = False
 
-    id = models.IntegerField(primary_key=True)
+    id = models.UUIDField(primary_key=True)
 
     # OCP Fields
     cluster_id = models.CharField(max_length=50, null=True)
@@ -340,7 +340,7 @@ class OCPAllNetworkSummary(models.Model):
         db_table = "reporting_ocpall_network_summary"
         managed = False
 
-    id = models.IntegerField(primary_key=True)
+    id = models.UUIDField(primary_key=True)
 
     cluster_id = models.CharField(max_length=50, null=True)
 
@@ -378,7 +378,7 @@ class OCPAllStorageSummary(models.Model):
         db_table = "reporting_ocpall_storage_summary"
         managed = False
 
-    id = models.IntegerField(primary_key=True)
+    id = models.UUIDField(primary_key=True)
 
     # OCP Fields
     cluster_id = models.CharField(max_length=50, null=True)
@@ -429,7 +429,7 @@ class OCPAllCostLineItemProjectDailySummary(models.Model):
             models.Index(fields=["instance_type"], name="ocpall_proj_inst_type_idx"),
         ]
 
-    id = models.IntegerField(primary_key=True)
+    id = models.UUIDField(primary_key=True)
 
     # The infrastructure provider type
     source_type = models.TextField()
