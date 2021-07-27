@@ -345,8 +345,10 @@ class ReportDBAccessorBase(KokuDBAccess):
             LOG.info("Updating %s", table)
 
         with connection.cursor() as cursor:
+            initial_schema = cursor.db.schema_name
             cursor.db.set_schema(self.schema)
             cursor.execute(sql, params=bind_params)
+            cursor.db.set_schema(initial_schema)
         LOG.info("Finished updating %s.", table)
 
     def _execute_presto_raw_sql_query(self, schema, sql, bind_params=None):
