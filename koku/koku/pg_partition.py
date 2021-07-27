@@ -48,7 +48,7 @@ def conn_execute(sql, params=None, _conn=conn):
     """
     if sql:
         cursor = _conn.cursor()
-        LOG.info(f"SQL: {cursor.mogrify(sql, params).decode('utf-8')}")
+        LOG.debug(f"SQL: {cursor.mogrify(sql, params).decode('utf-8')}")
         # print(cursor.mogrify(sql, params).decode('utf-8') + '\n', file=SQLFILE, flush=True)
         cursor.execute(sql, params)
         return cursor

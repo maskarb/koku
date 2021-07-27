@@ -39,10 +39,10 @@ def convert_matview_to_partitioned_table(matview_name, partition_col, pk_def, co
         constraintops={"override": constraints},
         column_map=column_map,
     )
-    return p_converter
+
     # Push the button, Frank.
-    # LOG.info(f"Converting materialized view {matview_name} to a partitioned table")
-    # p_converter.convert_to_partition()
+    LOG.info(f"Converting materialized view {matview_name} to a partitioned table")
+    p_converter.convert_to_partition()
 
 
 def convert_reporting_ocpall_compute_summary(apps, schema_editor):
@@ -115,18 +115,6 @@ CREATE INDEX ocpall_cost_summary_by_comp_cluster_alias_ilike ON reporting_ocpall
             CACHE["schema"], target_table, {
                 "schemaname": None,
                 "tablename": None,
-                "indexname": "ocpall_cost_summary_by_comp_region",
-                "indexcols": None,
-                "indisunique": None,
-                "indexdef": """
-CREATE INDEX ocpall_cost_summary_by_comp_region ON reporting_ocpall_compute_summary USING btree (region) ;
-""",
-            }
-        ),
-        ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
-                "schemaname": None,
-                "tablename": None,
                 "indexname": "ocpall_cost_summary_by_comp_account_id_ilike",
                 "indexcols": None,
                 "indisunique": None,
@@ -176,7 +164,7 @@ CREATE INDEX ocpall_cost_summary_by_comp_product_code_ilike ON reporting_ocpall_
     cols.remove('id')
     column_map = dict(zip(cols, cols))
 
-    return convert_matview_to_partitioned_table(
+    convert_matview_to_partitioned_table(
         matview_name,
         "usage_start",
         pk_def,
@@ -250,18 +238,6 @@ CREATE INDEX ocpall_cost_summary_by_net_cluster_alias ON reporting_ocpall_networ
                 "indisunique": None,
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_net_cluster_alias_ilike ON reporting_ocpall_network_summary USING gin (upper((cluster_alias)::text) gin_trgm_ops);
-""",
-            }
-        ),
-        ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
-                "schemaname": None,
-                "tablename": None,
-                "indexname": "ocpall_cost_summary_by_net_region",
-                "indexcols": None,
-                "indisunique": None,
-                "indexdef": """
-CREATE INDEX ocpall_cost_summary_by_net_region ON reporting_ocpall_network_summary USING btree (region) ;
 """,
             }
         ),
@@ -399,18 +375,6 @@ CREATE INDEX ocpall_cost_summary_by_stor_cluster_alias_ilike ON reporting_ocpall
             CACHE["schema"], target_table, {
                 "schemaname": None,
                 "tablename": None,
-                "indexname": "ocpall_cost_summary_by_stor_region",
-                "indexcols": None,
-                "indisunique": None,
-                "indexdef": """
-CREATE INDEX ocpall_cost_summary_by_stor_region ON reporting_ocpall_storage_summary USING btree (region) ;
-""",
-            }
-        ),
-        ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
-                "schemaname": None,
-                "tablename": None,
                 "indexname": "ocpall_cost_summary_by_stor_account_id_ilike",
                 "indexcols": None,
                 "indisunique": None,
@@ -541,18 +505,6 @@ CREATE INDEX ocpall_cost_summary_by_db_cluster_alias_ilike ON reporting_ocpall_d
             CACHE["schema"], target_table, {
                 "schemaname": None,
                 "tablename": None,
-                "indexname": "ocpall_cost_summary_by_db_region",
-                "indexcols": None,
-                "indisunique": None,
-                "indexdef": """
-CREATE INDEX ocpall_cost_summary_by_db_region ON reporting_ocpall_database_summary USING btree (region) ;
-""",
-            }
-        ),
-        ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
-                "schemaname": None,
-                "tablename": None,
                 "indexname": "ocpall_cost_summary_by_db_account_id_ilike",
                 "indexcols": None,
                 "indisunique": None,
@@ -676,18 +628,6 @@ CREATE INDEX ocpall_cost_summary_by_service_cluster_alias ON reporting_ocpall_co
                 "indisunique": None,
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_service_cluster_alias_ilike ON reporting_ocpall_cost_summary_by_service USING gin (upper((cluster_alias)::text) gin_trgm_ops);
-""",
-            }
-        ),
-        ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
-                "schemaname": None,
-                "tablename": None,
-                "indexname": "ocpall_cost_summary_by_service_region",
-                "indexcols": None,
-                "indisunique": None,
-                "indexdef": """
-CREATE INDEX ocpall_cost_summary_by_service_region ON reporting_ocpall_cost_summary_by_service USING btree (region) ;
 """,
             }
         ),
@@ -1305,12 +1245,12 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(resolve_schema),
         migrations.RunPython(convert_reporting_ocpall_compute_summary),
-        # migrations.RunPython(convert_reporting_ocpall_network_summary),
-        # migrations.RunPython(convert_reporting_ocpall_storage_summary),
-        # migrations.RunPython(convert_reporting_ocpall_database_summary),
-        # migrations.RunPython(convert_reporting_ocpall_cost_summary_by_service),
-        # migrations.RunPython(convert_reporting_ocpall_cost_summary_by_region),
-        # migrations.RunPython(convert_reporting_ocpall_cost_summary_by_account),
-        # migrations.RunPython(convert_reporting_ocpall_cost_summary),
-        # migrations.RunPython(convert_reporting_ocpallcostlineitem_daily_summary),
+        migrations.RunPython(convert_reporting_ocpall_network_summary),
+        migrations.RunPython(convert_reporting_ocpall_storage_summary),
+        migrations.RunPython(convert_reporting_ocpall_database_summary),
+        migrations.RunPython(convert_reporting_ocpall_cost_summary_by_service),
+        migrations.RunPython(convert_reporting_ocpall_cost_summary_by_region),
+        migrations.RunPython(convert_reporting_ocpall_cost_summary_by_account),
+        migrations.RunPython(convert_reporting_ocpall_cost_summary),
+        migrations.RunPython(convert_reporting_ocpallcostlineitem_daily_summary),
     ]
