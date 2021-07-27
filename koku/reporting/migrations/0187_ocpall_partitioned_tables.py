@@ -19,9 +19,11 @@ def resolve_schema(*args, **kwargs):
 # Change reporting_ocpusagelineitem_daily_summary
 # to a partitioned table with the same definition
 # =====================================================
-def convert_matview_to_partitioned_table(matview_name, partition_col, pk_def, col_defs, column_map={}, indexes=[], constraints=[]):
+def convert_matview_to_partitioned_table(
+    matview_name, partition_col, pk_def, col_defs, column_map={}, indexes=[], constraints=[]
+):
     # Resolve the current schema name
-    target_schema = CACHE['schema']
+    target_schema = CACHE["schema"]
     source_table = matview_name
     target_table = f"p_{source_table}"
 
@@ -46,7 +48,7 @@ def convert_matview_to_partitioned_table(matview_name, partition_col, pk_def, co
 
 
 def convert_reporting_ocpall_compute_summary(apps, schema_editor):
-    matview_name = 'reporting_ocpall_compute_summary'
+    matview_name = "reporting_ocpall_compute_summary"
     target_table = "p_" + matview_name
     LOG.info(f"Preparing to convert materialized view {matview_name} to a partitioned table")
     pk_name = f"{matview_name[len('reporting_'):]}_pkey"
@@ -59,24 +61,28 @@ def convert_reporting_ocpall_compute_summary(apps, schema_editor):
             data_type="uuid",
             using="uuid_generate_v4()",
             null=False,
-            default=ppart.Default('uuid_generate_v4()'),
-        ),
+            default=ppart.Default("uuid_generate_v4()"),
+        )
     ]
     override_constraints = [
         ppart.ConstraintDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "constraint_name": "ocpallcost_acct_summ_comp_fk",
-                "constraint_type": 'f',
+                "constraint_type": "f",
                 "constraint_columns": None,
                 "definition": """
 FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRABLE INITIALLY DEFERRED
 """,
-            }
+            },
         )
     ]
     override_indexes = [
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_comp_cluster_id",
@@ -85,10 +91,12 @@ FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRAB
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_comp_cluster_id ON reporting_ocpall_compute_summary USING btree (cluster_id) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_comp_cluster_alias",
@@ -97,10 +105,12 @@ CREATE INDEX ocpall_cost_summary_by_comp_cluster_id ON reporting_ocpall_compute_
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_comp_cluster_alias ON reporting_ocpall_compute_summary USING btree (cluster_alias) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_comp_cluster_alias_ilike",
@@ -109,10 +119,12 @@ CREATE INDEX ocpall_cost_summary_by_comp_cluster_alias ON reporting_ocpall_compu
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_comp_cluster_alias_ilike ON reporting_ocpall_compute_summary USING gin (upper((cluster_alias)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_comp_account_id_ilike",
@@ -121,10 +133,12 @@ CREATE INDEX ocpall_cost_summary_by_comp_cluster_alias_ilike ON reporting_ocpall
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_comp_account_id_ilike ON reporting_ocpall_compute_summary USING gin (upper((usage_account_id)::text) gin_trgm_ops) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_comp_account_alias_id",
@@ -133,10 +147,12 @@ CREATE INDEX ocpall_cost_summary_by_comp_account_id_ilike ON reporting_ocpall_co
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall_compute_summary USING btree (account_alias_id);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_comp_product_code",
@@ -145,10 +161,12 @@ CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_comp_product_code ON reporting_ocpall_compute_summary USING btree (product_code) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_comp_product_code_ilike",
@@ -157,11 +175,11 @@ CREATE INDEX ocpall_cost_summary_by_comp_product_code ON reporting_ocpall_comput
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_comp_product_code_ilike ON reporting_ocpall_compute_summary USING gin (upper((product_code)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
     ]
     cols = ppart.ConvertToPartition.get_table_columns(CACHE["schema"], matview_name)
-    cols.remove('id')
+    cols.remove("id")
     column_map = dict(zip(cols, cols))
 
     convert_matview_to_partitioned_table(
@@ -171,12 +189,12 @@ CREATE INDEX ocpall_cost_summary_by_comp_product_code_ilike ON reporting_ocpall_
         col_def,
         indexes=override_indexes,
         column_map=column_map,
-        constraints=override_constraints
+        constraints=override_constraints,
     )
 
 
 def convert_reporting_ocpall_network_summary(apps, schema_editor):
-    matview_name = 'reporting_ocpall_network_summary'
+    matview_name = "reporting_ocpall_network_summary"
     target_table = "p_" + matview_name
     LOG.info(f"Preparing to convert materialized view {matview_name} to a partitioned table")
     pk_name = f"{matview_name[len('reporting_'):]}_pkey"
@@ -189,24 +207,28 @@ def convert_reporting_ocpall_network_summary(apps, schema_editor):
             data_type="uuid",
             using="uuid_generate_v4()",
             null=False,
-            default=ppart.Default('uuid_generate_v4()'),
-        ),
+            default=ppart.Default("uuid_generate_v4()"),
+        )
     ]
     override_constraints = [
         ppart.ConstraintDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "constraint_name": "ocpallcost_acct_summ_net_fk",
                 "constraint_type": "f",
                 "constraint_columns": None,
                 "definition": """
 FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRABLE INITIALLY DEFERRED
 """,
-            }
+            },
         )
     ]
     override_indexes = [
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_net_cluster_id",
@@ -215,10 +237,12 @@ FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRAB
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_net_cluster_id ON reporting_ocpall_network_summary USING btree (cluster_id) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_net_cluster_alias",
@@ -227,10 +251,12 @@ CREATE INDEX ocpall_cost_summary_by_net_cluster_id ON reporting_ocpall_network_s
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_net_cluster_alias ON reporting_ocpall_network_summary USING btree (cluster_alias) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_net_cluster_alias_ilike",
@@ -239,10 +265,12 @@ CREATE INDEX ocpall_cost_summary_by_net_cluster_alias ON reporting_ocpall_networ
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_net_cluster_alias_ilike ON reporting_ocpall_network_summary USING gin (upper((cluster_alias)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_net_account_id_ilike",
@@ -251,10 +279,12 @@ CREATE INDEX ocpall_cost_summary_by_net_cluster_alias_ilike ON reporting_ocpall_
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_net_account_id_ilike ON reporting_ocpall_network_summary USING gin (upper((usage_account_id)::text) gin_trgm_ops) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_net_account_alias_id",
@@ -263,10 +293,12 @@ CREATE INDEX ocpall_cost_summary_by_net_account_id_ilike ON reporting_ocpall_net
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall_network_summary USING btree (account_alias_id);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_net_product_code",
@@ -275,10 +307,12 @@ CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_net_product_code ON reporting_ocpall_network_summary USING btree (product_code) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_net_product_code_ilike",
@@ -287,11 +321,11 @@ CREATE INDEX ocpall_cost_summary_by_net_product_code ON reporting_ocpall_network
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_net_product_code_ilike ON reporting_ocpall_network_summary USING gin (upper((product_code)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
     ]
     cols = ppart.ConvertToPartition.get_table_columns(CACHE["schema"], matview_name)
-    cols.remove('id')
+    cols.remove("id")
     column_map = dict(zip(cols, cols))
 
     convert_matview_to_partitioned_table(
@@ -301,12 +335,12 @@ CREATE INDEX ocpall_cost_summary_by_net_product_code_ilike ON reporting_ocpall_n
         col_def,
         indexes=override_indexes,
         column_map=column_map,
-        constraints=override_constraints
+        constraints=override_constraints,
     )
 
 
 def convert_reporting_ocpall_storage_summary(apps, schema_editor):
-    matview_name = 'reporting_ocpall_storage_summary'
+    matview_name = "reporting_ocpall_storage_summary"
     target_table = "p_" + matview_name
     LOG.info(f"Preparing to convert materialized view {matview_name} to a partitioned table")
     pk_name = f"{matview_name[len('reporting_'):]}_pkey"
@@ -319,24 +353,28 @@ def convert_reporting_ocpall_storage_summary(apps, schema_editor):
             data_type="uuid",
             using="uuid_generate_v4()",
             null=False,
-            default=ppart.Default('uuid_generate_v4()'),
-        ),
+            default=ppart.Default("uuid_generate_v4()"),
+        )
     ]
     override_constraints = [
         ppart.ConstraintDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "constraint_name": "ocpallcost_acct_summ_stor_fk",
                 "constraint_type": "f",
                 "constraint_columns": None,
                 "definition": """
 FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRABLE INITIALLY DEFERRED
 """,
-            }
+            },
         )
     ]
     override_indexes = [
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_stor_cluster_id",
@@ -345,10 +383,12 @@ FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRAB
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_stor_cluster_id ON reporting_ocpall_storage_summary USING btree (cluster_id) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_stor_cluster_alias",
@@ -357,10 +397,12 @@ CREATE INDEX ocpall_cost_summary_by_stor_cluster_id ON reporting_ocpall_storage_
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_stor_cluster_alias ON reporting_ocpall_storage_summary USING btree (cluster_alias) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_stor_cluster_alias_ilike",
@@ -369,10 +411,12 @@ CREATE INDEX ocpall_cost_summary_by_stor_cluster_alias ON reporting_ocpall_stora
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_stor_cluster_alias_ilike ON reporting_ocpall_storage_summary USING gin (upper((cluster_alias)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_stor_account_id_ilike",
@@ -381,10 +425,12 @@ CREATE INDEX ocpall_cost_summary_by_stor_cluster_alias_ilike ON reporting_ocpall
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_stor_account_id_ilike ON reporting_ocpall_storage_summary USING gin (upper((usage_account_id)::text) gin_trgm_ops) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_stor_account_alias_id",
@@ -393,10 +439,12 @@ CREATE INDEX ocpall_cost_summary_by_stor_account_id_ilike ON reporting_ocpall_st
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall_storage_summary USING btree (account_alias_id);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_stor_product_code",
@@ -405,10 +453,12 @@ CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_stor_product_code ON reporting_ocpall_storage_summary USING btree (product_code) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_stor_product_code_ilike",
@@ -417,11 +467,11 @@ CREATE INDEX ocpall_cost_summary_by_stor_product_code ON reporting_ocpall_storag
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_stor_product_code_ilike ON reporting_ocpall_storage_summary USING gin (upper((product_code)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
     ]
     cols = ppart.ConvertToPartition.get_table_columns(CACHE["schema"], matview_name)
-    cols.remove('id')
+    cols.remove("id")
     column_map = dict(zip(cols, cols))
 
     convert_matview_to_partitioned_table(
@@ -431,12 +481,12 @@ CREATE INDEX ocpall_cost_summary_by_stor_product_code_ilike ON reporting_ocpall_
         col_def,
         indexes=override_indexes,
         column_map=column_map,
-        constraints=override_constraints
+        constraints=override_constraints,
     )
 
 
 def convert_reporting_ocpall_database_summary(apps, schema_editor):
-    matview_name = 'reporting_ocpall_database_summary'
+    matview_name = "reporting_ocpall_database_summary"
     target_table = "p_" + matview_name
     LOG.info(f"Preparing to convert materialized view {matview_name} to a partitioned table")
     pk_name = f"{matview_name[len('reporting_'):]}_pkey"
@@ -449,24 +499,28 @@ def convert_reporting_ocpall_database_summary(apps, schema_editor):
             data_type="uuid",
             using="uuid_generate_v4()",
             null=False,
-            default=ppart.Default('uuid_generate_v4()'),
-        ),
+            default=ppart.Default("uuid_generate_v4()"),
+        )
     ]
     override_constraints = [
         ppart.ConstraintDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "constraint_name": "ocpallcost_acct_summ_db_fk",
                 "constraint_type": "f",
                 "constraint_columns": None,
                 "definition": """
 FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRABLE INITIALLY DEFERRED
 """,
-            }
+            },
         )
     ]
     override_indexes = [
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_db_cluster_id",
@@ -475,10 +529,12 @@ FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRAB
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_db_cluster_id ON reporting_ocpall_database_summary USING btree (cluster_id) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_db_cluster_alias",
@@ -487,10 +543,12 @@ CREATE INDEX ocpall_cost_summary_by_db_cluster_id ON reporting_ocpall_database_s
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_db_cluster_alias ON reporting_ocpall_database_summary USING btree (cluster_alias) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_db_cluster_alias_ilike",
@@ -499,10 +557,12 @@ CREATE INDEX ocpall_cost_summary_by_db_cluster_alias ON reporting_ocpall_databas
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_db_cluster_alias_ilike ON reporting_ocpall_database_summary USING gin (upper((cluster_alias)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_db_account_id_ilike",
@@ -511,10 +571,12 @@ CREATE INDEX ocpall_cost_summary_by_db_cluster_alias_ilike ON reporting_ocpall_d
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_db_account_id_ilike ON reporting_ocpall_database_summary USING gin (upper((usage_account_id)::text) gin_trgm_ops) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_db_account_alias_id",
@@ -523,10 +585,12 @@ CREATE INDEX ocpall_cost_summary_by_db_account_id_ilike ON reporting_ocpall_data
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall_database_summary USING btree (account_alias_id);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_db_product_code",
@@ -535,10 +599,12 @@ CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_db_product_code ON reporting_ocpall_database_summary USING btree (product_code) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_db_product_code_ilike",
@@ -547,11 +613,11 @@ CREATE INDEX ocpall_cost_summary_by_db_product_code ON reporting_ocpall_database
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_db_product_code_ilike ON reporting_ocpall_database_summary USING gin (upper((product_code)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
     ]
     cols = ppart.ConvertToPartition.get_table_columns(CACHE["schema"], matview_name)
-    cols.remove('id')
+    cols.remove("id")
     column_map = dict(zip(cols, cols))
 
     convert_matview_to_partitioned_table(
@@ -561,12 +627,12 @@ CREATE INDEX ocpall_cost_summary_by_db_product_code_ilike ON reporting_ocpall_da
         col_def,
         indexes=override_indexes,
         column_map=column_map,
-        constraints=override_constraints
+        constraints=override_constraints,
     )
 
 
 def convert_reporting_ocpall_cost_summary_by_service(apps, schema_editor):
-    matview_name = 'reporting_ocpall_cost_summary_by_service'
+    matview_name = "reporting_ocpall_cost_summary_by_service"
     target_table = "p_" + matview_name
     LOG.info(f"Preparing to convert materialized view {matview_name} to a partitioned table")
     pk_name = f"{matview_name[len('reporting_'):]}_pkey"
@@ -579,24 +645,28 @@ def convert_reporting_ocpall_cost_summary_by_service(apps, schema_editor):
             data_type="uuid",
             using="uuid_generate_v4()",
             null=False,
-            default=ppart.Default('uuid_generate_v4()'),
-        ),
+            default=ppart.Default("uuid_generate_v4()"),
+        )
     ]
     override_constraints = [
         ppart.ConstraintDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "constraint_name": "ocpallcost_acct_summ_service_fk",
                 "constraint_type": "f",
                 "constraint_columns": None,
                 "definition": """
 FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRABLE INITIALLY DEFERRED
 """,
-            }
+            },
         )
     ]
     override_indexes = [
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_service_cluster_id",
@@ -605,10 +675,12 @@ FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRAB
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_service_cluster_id ON reporting_ocpall_cost_summary_by_service USING btree (cluster_id) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_service_cluster_alias",
@@ -617,10 +689,12 @@ CREATE INDEX ocpall_cost_summary_by_service_cluster_id ON reporting_ocpall_cost_
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_service_cluster_alias ON reporting_ocpall_cost_summary_by_service USING btree (cluster_alias) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_service_cluster_alias_ilike",
@@ -629,10 +703,12 @@ CREATE INDEX ocpall_cost_summary_by_service_cluster_alias ON reporting_ocpall_co
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_service_cluster_alias_ilike ON reporting_ocpall_cost_summary_by_service USING gin (upper((cluster_alias)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_service_account_id_ilike",
@@ -641,10 +717,12 @@ CREATE INDEX ocpall_cost_summary_by_service_cluster_alias_ilike ON reporting_ocp
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_service_account_id_ilike ON reporting_ocpall_cost_summary_by_service USING gin (upper((usage_account_id)::text) gin_trgm_ops) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_service_account_alias_id",
@@ -653,10 +731,12 @@ CREATE INDEX ocpall_cost_summary_by_service_account_id_ilike ON reporting_ocpall
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall_cost_summary_by_service USING btree (account_alias_id);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_service_product_code",
@@ -665,10 +745,12 @@ CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_service_product_code ON reporting_ocpall_cost_summary_by_service USING btree (product_code) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_service_product_code_ilike",
@@ -677,10 +759,12 @@ CREATE INDEX ocpall_cost_summary_by_service_product_code ON reporting_ocpall_cos
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_service_product_code_ilike ON reporting_ocpall_cost_summary_by_service USING gin (upper((product_code)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_service_product_family",
@@ -689,10 +773,12 @@ CREATE INDEX ocpall_cost_summary_by_service_product_code_ilike ON reporting_ocpa
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_service_product_family ON reporting_ocpall_cost_summary_by_service USING btree (product_family) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_service_product_family_ilike",
@@ -701,11 +787,11 @@ CREATE INDEX ocpall_cost_summary_by_service_product_family ON reporting_ocpall_c
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_service_product_family_ilike ON reporting_ocpall_cost_summary_by_service USING gin (upper((product_family)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
     ]
     cols = ppart.ConvertToPartition.get_table_columns(CACHE["schema"], matview_name)
-    cols.remove('id')
+    cols.remove("id")
     column_map = dict(zip(cols, cols))
 
     convert_matview_to_partitioned_table(
@@ -715,12 +801,12 @@ CREATE INDEX ocpall_cost_summary_by_service_product_family_ilike ON reporting_oc
         col_def,
         indexes=override_indexes,
         column_map=column_map,
-        constraints=override_constraints
+        constraints=override_constraints,
     )
 
 
 def convert_reporting_ocpall_cost_summary_by_region(apps, schema_editor):
-    matview_name = 'reporting_ocpall_cost_summary_by_region'
+    matview_name = "reporting_ocpall_cost_summary_by_region"
     target_table = "p_" + matview_name
     LOG.info(f"Preparing to convert materialized view {matview_name} to a partitioned table")
     pk_name = f"{matview_name[len('reporting_'):]}_pkey"
@@ -733,24 +819,28 @@ def convert_reporting_ocpall_cost_summary_by_region(apps, schema_editor):
             data_type="uuid",
             using="uuid_generate_v4()",
             null=False,
-            default=ppart.Default('uuid_generate_v4()'),
-        ),
+            default=ppart.Default("uuid_generate_v4()"),
+        )
     ]
     override_constraints = [
         ppart.ConstraintDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "constraint_name": "ocpallcost_acct_summ_region_fk",
                 "constraint_type": "f",
                 "constraint_columns": None,
                 "definition": """
 FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRABLE INITIALLY DEFERRED
 """,
-            }
+            },
         )
     ]
     override_indexes = [
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_region_cluster_id",
@@ -759,10 +849,12 @@ FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRAB
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_region_cluster_id ON reporting_ocpall_cost_summary_by_region USING btree (cluster_id) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_region_cluster_alias",
@@ -771,10 +863,12 @@ CREATE INDEX ocpall_cost_summary_by_region_cluster_id ON reporting_ocpall_cost_s
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_region_cluster_alias ON reporting_ocpall_cost_summary_by_region USING btree (cluster_alias) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_region_cluster_alias_ilike",
@@ -783,10 +877,12 @@ CREATE INDEX ocpall_cost_summary_by_region_cluster_alias ON reporting_ocpall_cos
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_region_cluster_alias_ilike ON reporting_ocpall_cost_summary_by_region USING gin (upper((cluster_alias)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_region_region",
@@ -795,10 +891,12 @@ CREATE INDEX ocpall_cost_summary_by_region_cluster_alias_ilike ON reporting_ocpa
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_region_region ON reporting_ocpall_cost_summary_by_region USING btree (region) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_region_account_id_ilike",
@@ -807,10 +905,12 @@ CREATE INDEX ocpall_cost_summary_by_region_region ON reporting_ocpall_cost_summa
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_region_account_id_ilike ON reporting_ocpall_cost_summary_by_region USING gin (upper((usage_account_id)::text) gin_trgm_ops) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_region_account_alias_id",
@@ -819,11 +919,11 @@ CREATE INDEX ocpall_cost_summary_by_region_account_id_ilike ON reporting_ocpall_
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall_cost_summary_by_region USING btree (account_alias_id);
 """,
-            }
+            },
         ),
     ]
     cols = ppart.ConvertToPartition.get_table_columns(CACHE["schema"], matview_name)
-    cols.remove('id')
+    cols.remove("id")
     column_map = dict(zip(cols, cols))
 
     convert_matview_to_partitioned_table(
@@ -833,12 +933,12 @@ CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall
         col_def,
         indexes=override_indexes,
         column_map=column_map,
-        constraints=override_constraints
+        constraints=override_constraints,
     )
 
 
 def convert_reporting_ocpall_cost_summary_by_account(apps, schema_editor):
-    matview_name = 'reporting_ocpall_cost_summary_by_account'
+    matview_name = "reporting_ocpall_cost_summary_by_account"
     target_table = "p_" + matview_name
     LOG.info(f"Preparing to convert materialized view {matview_name} to a partitioned table")
     pk_name = f"{matview_name[len('reporting_'):]}_pkey"
@@ -851,24 +951,28 @@ def convert_reporting_ocpall_cost_summary_by_account(apps, schema_editor):
             data_type="uuid",
             using="uuid_generate_v4()",
             null=False,
-            default=ppart.Default('uuid_generate_v4()'),
-        ),
+            default=ppart.Default("uuid_generate_v4()"),
+        )
     ]
     override_constraints = [
         ppart.ConstraintDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "constraint_name": "ocpallcost_acct_summ_account_fk",
                 "constraint_type": "f",
                 "constraint_columns": None,
                 "definition": """
 FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRABLE INITIALLY DEFERRED
 """,
-            }
+            },
         )
     ]
     override_indexes = [
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_account_cluster_id",
@@ -877,10 +981,12 @@ FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRAB
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_account_cluster_id ON reporting_ocpall_cost_summary_by_account USING btree (cluster_id) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_account_cluster_alias",
@@ -889,10 +995,12 @@ CREATE INDEX ocpall_cost_summary_by_account_cluster_id ON reporting_ocpall_cost_
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_account_cluster_alias ON reporting_ocpall_cost_summary_by_account USING btree (cluster_alias) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_account_cluster_alias_ilike",
@@ -901,10 +1009,12 @@ CREATE INDEX ocpall_cost_summary_by_account_cluster_alias ON reporting_ocpall_co
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_account_cluster_alias_ilike ON reporting_ocpall_cost_summary_by_account USING gin (upper((cluster_alias)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_account_account_id",
@@ -913,10 +1023,12 @@ CREATE INDEX ocpall_cost_summary_by_account_cluster_alias_ilike ON reporting_ocp
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_account_account_id ON reporting_ocpall_cost_summary_by_account USING btree (usage_account_id) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_account_account_id_ilike",
@@ -925,10 +1037,12 @@ CREATE INDEX ocpall_cost_summary_by_account_account_id ON reporting_ocpall_cost_
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_account_account_id_ilike ON reporting_ocpall_cost_summary_by_account USING gin (upper((usage_account_id)::text) gin_trgm_ops) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_by_account_account_alias_id",
@@ -937,11 +1051,11 @@ CREATE INDEX ocpall_cost_summary_by_account_account_id_ilike ON reporting_ocpall
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall_cost_summary_by_account USING btree (account_alias_id);
 """,
-            }
+            },
         ),
     ]
     cols = ppart.ConvertToPartition.get_table_columns(CACHE["schema"], matview_name)
-    cols.remove('id')
+    cols.remove("id")
     column_map = dict(zip(cols, cols))
 
     convert_matview_to_partitioned_table(
@@ -951,12 +1065,12 @@ CREATE INDEX ocpall_cost_summary_by_account_account_alias_id ON reporting_ocpall
         col_def,
         indexes=override_indexes,
         column_map=column_map,
-        constraints=override_constraints
+        constraints=override_constraints,
     )
 
 
 def convert_reporting_ocpall_cost_summary(apps, schema_editor):
-    matview_name = 'reporting_ocpall_cost_summary'
+    matview_name = "reporting_ocpall_cost_summary"
     target_table = "p_" + matview_name
     LOG.info(f"Preparing to convert materialized view {matview_name} to a partitioned table")
     pk_name = f"{matview_name[len('reporting_'):]}_pkey"
@@ -969,12 +1083,14 @@ def convert_reporting_ocpall_cost_summary(apps, schema_editor):
             data_type="uuid",
             using="uuid_generate_v4()",
             null=False,
-            default=ppart.Default('uuid_generate_v4()'),
-        ),
+            default=ppart.Default("uuid_generate_v4()"),
+        )
     ]
     override_indexes = [
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_cluster_id",
@@ -983,10 +1099,12 @@ def convert_reporting_ocpall_cost_summary(apps, schema_editor):
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_cluster_id ON reporting_ocpall_cost_summary USING btree (cluster_id) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_cluster_alias",
@@ -995,10 +1113,12 @@ CREATE INDEX ocpall_cost_summary_cluster_id ON reporting_ocpall_cost_summary USI
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_cluster_alias ON reporting_ocpall_cost_summary USING btree (cluster_alias) ;
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_cost_summary_cluster_alias_ilike",
@@ -1007,20 +1127,15 @@ CREATE INDEX ocpall_cost_summary_cluster_alias ON reporting_ocpall_cost_summary 
                 "indexdef": """
 CREATE INDEX ocpall_cost_summary_cluster_alias_ilike ON reporting_ocpall_cost_summary USING gin (upper((cluster_alias)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
     ]
     cols = ppart.ConvertToPartition.get_table_columns(CACHE["schema"], matview_name)
-    cols.remove('id')
+    cols.remove("id")
     column_map = dict(zip(cols, cols))
 
     convert_matview_to_partitioned_table(
-        matview_name,
-        "usage_start",
-        pk_def,
-        col_def,
-        indexes=override_indexes,
-        column_map=column_map,
+        matview_name, "usage_start", pk_def, col_def, indexes=override_indexes, column_map=column_map
     )
 
 
@@ -1038,24 +1153,28 @@ def convert_reporting_ocpallcostlineitem_daily_summary(apps, schema_editor):
             data_type="uuid",
             using="uuid_generate_v4()",
             null=False,
-            default=ppart.Default('uuid_generate_v4()'),
-        ),
+            default=ppart.Default("uuid_generate_v4()"),
+        )
     ]
     override_constraints = [
         ppart.ConstraintDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "constraint_name": "ocpallcost_ds_account_alias_fk",
                 "constraint_type": "f",
                 "constraint_columns": None,
                 "definition": """
 FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRABLE INITIALLY DEFERRED
 """,
-            }
+            },
         )
     ]
     override_indexes = [
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_product_code_ilike",
@@ -1064,10 +1183,12 @@ FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRAB
                 "indexdef": """
 CREATE INDEX ocpall_product_code_ilike ON reporting_ocpallcostlineitem_daily_summary USING gin (upper((product_code)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_product_family_ilike",
@@ -1076,10 +1197,12 @@ CREATE INDEX ocpall_product_code_ilike ON reporting_ocpallcostlineitem_daily_sum
                 "indexdef": """
 CREATE INDEX ocpall_product_family_ilike ON reporting_ocpallcostlineitem_daily_summary USING gin (upper((product_family)::text) gin_trgm_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpallcstdlysumm_node",
@@ -1088,10 +1211,12 @@ CREATE INDEX ocpall_product_family_ilike ON reporting_ocpallcostlineitem_daily_s
                 "indexdef": """
 CREATE INDEX ocpallcstdlysumm_node ON reporting_ocpallcostlineitem_daily_summary USING btree (node text_pattern_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpallcstdlysumm_node_like",
@@ -1100,10 +1225,12 @@ CREATE INDEX ocpallcstdlysumm_node ON reporting_ocpallcostlineitem_daily_summary
                 "indexdef": """
 CREATE INDEX ocpallcstdlysumm_node_like ON reporting_ocpallcostlineitem_daily_summary USING gin (node gin_trgm_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpallcstdlysumm_nsp",
@@ -1112,11 +1239,11 @@ CREATE INDEX ocpallcstdlysumm_node_like ON reporting_ocpallcostlineitem_daily_su
                 "indexdef": """
 CREATE INDEX ocpallcstdlysumm_nsp ON reporting_ocpallcostlineitem_daily_summary USING gin (namespace);
 """,
-            }
+            },
         ),
     ]
     cols = ppart.ConvertToPartition.get_table_columns(CACHE["schema"], matview_name)
-    cols.remove('id')
+    cols.remove("id")
     column_map = dict(zip(cols, cols))
 
     convert_matview_to_partitioned_table(
@@ -1126,7 +1253,7 @@ CREATE INDEX ocpallcstdlysumm_nsp ON reporting_ocpallcostlineitem_daily_summary 
         col_def,
         indexes=override_indexes,
         column_map=column_map,
-        constraints=override_constraints
+        constraints=override_constraints,
     )
 
 
@@ -1144,24 +1271,28 @@ def convert_reporting_ocpallcostlineitem_project_daily_summary(apps, schema_edit
             data_type="uuid",
             using="uuid_generate_v4()",
             null=False,
-            default=ppart.Default('uuid_generate_v4()'),
-        ),
+            default=ppart.Default("uuid_generate_v4()"),
+        )
     ]
     override_constraints = [
         ppart.ConstraintDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "constraint_name": "ocpallcost_project_ds_account_alias_fk",
                 "constraint_type": "f",
                 "constraint_columns": None,
                 "definition": """
 FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRABLE INITIALLY DEFERRED
 """,
-            }
+            },
         )
     ]
     override_indexes = [
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpallcstprjdlysumm_node",
@@ -1170,10 +1301,12 @@ FOREIGN KEY (account_alias_id) REFERENCES reporting_awsaccountalias(id) DEFERRAB
                 "indexdef": """
 CREATE INDEX ocpallcstprjdlysumm_node ON reporting_ocpallcostlineitem_project_daily_summary (node text_pattern_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpallcstprjdlysumm_nsp",
@@ -1182,10 +1315,12 @@ CREATE INDEX ocpallcstprjdlysumm_node ON reporting_ocpallcostlineitem_project_da
                 "indexdef": """
 CREATE INDEX ocpallcstprjdlysumm_nsp ON reporting_ocpallcostlineitem_project_daily_summary (namespace text_pattern_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpallcstprjdlysumm_node_like",
@@ -1194,10 +1329,12 @@ CREATE INDEX ocpallcstprjdlysumm_nsp ON reporting_ocpallcostlineitem_project_dai
                 "indexdef": """
 CREATE INDEX ocpallcstprjdlysumm_node_like ON reporting_ocpallcostlineitem_project_daily_summary USING GIN (node gin_trgm_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpallcstprjdlysumm_nsp_like",
@@ -1206,10 +1343,12 @@ CREATE INDEX ocpallcstprjdlysumm_node_like ON reporting_ocpallcostlineitem_proje
                 "indexdef": """
 CREATE INDEX ocpallcstprjdlysumm_nsp_like ON reporting_ocpallcostlineitem_project_daily_summary USING GIN (namespace gin_trgm_ops);
 """,
-            }
+            },
         ),
         ppart.IndexDefinition(
-            CACHE["schema"], target_table, {
+            CACHE["schema"],
+            target_table,
+            {
                 "schemaname": None,
                 "tablename": None,
                 "indexname": "ocpall_product_family_ilike",
@@ -1218,11 +1357,11 @@ CREATE INDEX ocpallcstprjdlysumm_nsp_like ON reporting_ocpallcostlineitem_projec
                 "indexdef": """
 CREATE INDEX ocpall_product_family_ilike ON reporting_ocpallcostlineitem_daily_summary USING GIN (upper(product_family) gin_trgm_ops);
 """,
-            }
+            },
         ),
     ]
     cols = ppart.ConvertToPartition.get_table_columns(CACHE["schema"], matview_name)
-    cols.remove('id')
+    cols.remove("id")
     column_map = dict(zip(cols, cols))
 
     convert_matview_to_partitioned_table(
@@ -1232,15 +1371,13 @@ CREATE INDEX ocpall_product_family_ilike ON reporting_ocpallcostlineitem_daily_s
         col_def,
         indexes=override_indexes,
         column_map=column_map,
-        constraints=override_constraints
+        constraints=override_constraints,
     )
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('reporting', '0186_subpartition_cols'),
-    ]
+    dependencies = [("reporting", "0186_subpartition_cols")]
 
     operations = [
         migrations.RunPython(resolve_schema),
