@@ -13,6 +13,9 @@ from dateutil.relativedelta import relativedelta
 from django.db import connection as conn
 from django.db import transaction
 from django.db.utils import ProgrammingError
+from tenant_schemas.utils import schema_context
+
+from .database import get_model
 
 
 # If this is detected, the code will try to resolve this to a name
@@ -33,6 +36,8 @@ LOG = logging.getLogger(__name__)
 # SQLFILE = open('/tmp/pg_partition.sql', 'wt')
 
 _TEMPLATE_SCHEMA = os.environ.get("TEMPLATE_SCHEMA", "template0")
+
+PartitionedTable = get_model("partitioned_tables")
 
 
 # Standardized SQL executor
@@ -628,6 +633,8 @@ class ConvertToPartition:
         indexops={},
         constraintops={},
         column_map={},
+        subpartition_type=None,
+        subpartition_key=None,
     ):
         """
         Initialize the converter.
@@ -663,6 +670,13 @@ class ConvertToPartition:
         self.views = self.__get_views()
         self.__new_trigger = self.detect_new_manager_trigger()
         self.column_map = column_map
+        # These are tied together. They must both be set or unset
+        if subpartition_type and subpartition_key:
+            self.subpartition_type = subpartition_type
+            self.subpartition_key = subpartition_key
+        else:
+            self.subpartition_type = None
+            self.subpartition_key = None
 
         if self.relkind not in "mr":
             relname = f"{self.source_schema}.{self.source_table_name}"
@@ -1222,6 +1236,25 @@ select partition_start from scan_for_date_partitions(%s::text, %s::text, %s::tex
         requested_partitions = fetchall(cur)
         return requested_partitions
 
+    def __format_partition_start_sql_exp(self, key):
+        return f"to_char({key}, 'YYYY-MM-01') AS \"{key}\""
+
+    def __get_partition_start_values_new(self):
+        partition_keys = []
+        partition_key = self.__format_partition_start_sql_exp(self.partition_key)
+        partition_keys.append(partition_key)
+        if self.subpartition_key is not None:
+            partition_keys.append(self.subpartition_key)
+        sql = f"""
+select distinct
+       {', '.join(partition_keys)}
+  from {self.source_schema}.{self.source_table_name}
+ order
+    by {', '.join(partition_keys)}
+"""
+        cur = conn_execute(sql)
+        return fetchall(cur)
+
     def __get_partition_parameters_start_values(self, params):
         sql = f"""
 select (partition_parameters->>'from')::date as existing_partition
@@ -1249,13 +1282,14 @@ select (partition_parameters->>'from')::date as existing_partition
             self.target_schema,
             self.partitioned_table_name,
         ]
-        requested_partitions = self.__get_partition_start_values(params)
+        # requested_partitions = self.__get_partition_start_values(params)
+        needed_partitions = self.__get_partition_start_values(params)
 
         # Get existing partitions except the default partition
-        params = [self.target_schema, self.partitioned_table_name, f"^{self.partitioned_table_name}"]
-        existing_partitions = self.__get_partition_parameters_start_values(params)
+        # params = [self.target_schema, self.partitioned_table_name, f"^{self.partitioned_table_name}"]
+        # existing_partitions = self.__get_partition_parameters_start_values(params)
 
-        needed_partitions = self.__get_needed_partitions(requested_partitions, existing_partitions)
+        # needed_partitions = self.__get_needed_partitions(requested_partitions, existing_partitions)
 
         part_rec_sql = f"""
 INSERT INTO "{self.target_schema}"."partitioned_tables" (
@@ -1264,7 +1298,9 @@ INSERT INTO "{self.target_schema}"."partitioned_tables" (
     partition_of_table_name,
     partition_type,
     partition_col,
-    partition_parameters
+    partition_parameters,
+    subpartition_type,
+    subpartition_col
 )
 VALUES (
     %s,
@@ -1272,7 +1308,9 @@ VALUES (
     %s,
     %s,
     %s,
-    %s::jsonb
+    %s::jsonb,
+    %s,
+    %s
 );
 """
         params = [
@@ -1282,18 +1320,60 @@ VALUES (
             self.partition_type.lower(),
             self.partition_key,
             None,
+            self.subpartition_type,
+            self.subpartition_key,
+        ]
+        sub_params = [
+            self.target_schema,
+            None,
+            None,
+            self.subpartition_type.lower(),
+            self.subpartition_key,
+            None,
+            None,
+            None,
         ]
         part_params = {"default": False, "from": None, "to": None}
+        subpart_params = {"default": False, "in": None}
+        subpart_count = 1
+        last_primary = None
+        sub_default_created = False
         for newpart in needed_partitions:
-            part_params["from"] = str(newpart)
-            part_params["to"] = str(newpart + relativedelta(months=1))
-            suffix = newpart.strftime("%Y_%m")
-            partition_name = f"{self.partitioned_table_name}_{suffix}"
-            params[1] = partition_name
-            params[-1] = json.dumps(part_params)
-            LOG.info(f'Creating and recording partition "{self.target_schema}"."{partition_name}"')
-            conn_execute(part_rec_sql, params)
-            created_partitions.append({"table_name": partition_name, "suffix": suffix})
+            primary_partition = newpart[self.partition_key]
+            if last_primary != primary_partition:
+                last_primary = primary_partition
+                sub_default_created = False
+
+                part_params["from"] = str(primary_partition)
+                part_params["to"] = str(primary_partition + relativedelta(months=1))
+                suffix = primary_partition.strftime("%Y_%m")
+                partition_name = f"{self.partitioned_table_name}_{suffix}"
+                params[1] = partition_name
+                params[-3] = json.dumps(part_params)
+                LOG.info(f'Creating and recording partition "{self.target_schema}"."{partition_name}"')
+                conn_execute(part_rec_sql, params)
+                created_partitions.append({"table_name": partition_name, "suffix": suffix})
+
+            if self.subpartition_type:
+                if not sub_default_created:
+                    sub_partition = newpart[self.subpartition_key]
+                    sub_partition_name = f"{partition_name}_default"
+                    params[1] = sub_partition_name
+                    params[2] = partition_name
+                    params[-3] = '{"default": true}'
+                    conn_execute(part_rec_sql, sub_params)
+                    sub_default_created = True
+                    created_partitions.append({"table_name": sub_partition_name, "suffix": "default"})
+
+                subpart_count += 1
+                suffix = f"{subpart_count:0>4}"
+                sub_partition_name = f"{partition_name}_{suffix}"
+                subpart_params["in"] = sub_partition
+                params[1] = sub_partition_name
+                params[2] = partition_name
+                params[-3] = json.dumps(subpart_params)
+                conn_execute(part_rec_sql, sub_params)
+                created_partitions.append({"table_name": sub_partition_name, "suffix": suffix})
 
         self.created_partitions = created_partitions
 
@@ -1859,3 +1939,66 @@ def repartition_default_data(schema_name=None, partitioned_table_name=None):
             default_partition=default_rec["default_partition"],
         )
         default_partitioner.repartition_default_data()
+
+
+def validate_partition_rec(part_rec):
+    if not isinstance(part_rec, PartitionedTable):
+        raise TypeError("Must be a PartitionedTable instance")
+    if not (
+        bool(part_rec.get("partition_parameters"))
+        and bool(part_rec.get("schema_name"))
+        and bool(part_rec.get("table_name"))
+        and bool(part_rec.get("partition_of_table_name"))
+        and bool(part_rec.get("partition_type"))
+        and bool(part_rec.get("partition_col"))
+    ):
+        raise ValueError("Empty or incomplete PartitionTable instance")
+
+    return True
+
+
+def get_or_create_default_partition(part_rec, validated=False):
+    if not validated:
+        validated = validate_partition_rec(part_rec)
+
+    default_keys = ("schema_name", "table_name", "partition_of_table_name", "partition_type", "partition_col")
+    default_params = {k: v for k, v in part_rec.items() if k in default_keys}
+    default_params["table_name"] = f"{default_params['partition_of_table_name']}_default"
+    default_params["partition_parameters"] = {"default": True}
+    with schema_context(part_rec.schema_name):
+        default_part, created = PartitionedTable.objects.get_or_create(
+            schema_name=default_params["schema_name"],
+            table_name=default_params["table_name"],
+            partition_of_table_name=default_params["partition_of_table_name"],
+            partitioned_parameters__default=True,
+            defaults=default_params,
+        )
+
+    return default_part, created
+
+
+def get_or_create_partition(part_rec, validated=False):
+    if not validated:
+        validated = validate_partition_rec(part_rec)
+
+    if "id" in part_rec:
+        del part_rec["id"]
+
+    default_partition, created = get_or_create_default_partition(part_rec, validated=validated)
+    if part_rec["partition_parameters"]["default"]:
+        return default_partition, created
+
+    with schema_context(part_rec.schema_name):
+        subpartition, created = PartitionedTable.objects.get_or_create(
+            schema_name=part_rec["schema_name"],
+            table_name=part_rec["table_name"],
+            partition_of_table_name=part_rec["partition_of_table_name"],
+            partitioned_parameters__default=part_rec["partition_parameters"]["default"],
+            partition_type=part_rec["subpartition_type"],
+            partition_col=part_rec["subpartition_col"],
+            subpartition_type=part_rec["subpartition_type"],
+            subpartition_col=part_rec["subpartition_col"],
+            defaults=part_rec,
+        )
+
+    return subpartition, created

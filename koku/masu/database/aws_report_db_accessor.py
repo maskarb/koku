@@ -9,11 +9,15 @@ import pkgutil
 import uuid
 
 from dateutil.parser import parse
+from dateutil.relativedelta import relativedelta
 from django.db import connection
 from django.db.models import F
 from jinjasql import JinjaSql
+from sqlparse import split as sql_split
 from tenant_schemas.utils import schema_context
 
+from koku.database import get_model
+from koku.pg_partition import get_or_create_partition
 from masu.config import Config
 from masu.database import AWS_CUR_TABLE_MAP
 from masu.database.report_db_accessor_base import ReportDBAccessorBase
@@ -475,3 +479,50 @@ class AWSReportDBAccessor(ReportDBAccessorBase):
         results = self._execute_presto_raw_sql_query(self.schema, sql, bind_params=sql_params)
 
         return [json.loads(result[0]) for result in results]
+
+    def populate_ocp_on_all(self, start_date, end_date):
+        sql = pkgutil.get_data("masu.database", "sql/reporting_ocpallcostlineitem_daily_summary_aws.sql").decode(
+            "utf-8"
+        )
+        sql_params = {"start_date": start_date, "end_date": end_date, "schema": self.schema}
+
+        date = start_date.__class__
+        PT = get_model("PartitionedTable")
+        partition_start = date(start_date.year, start_date.month, 1)
+        partition_end = (partition_start + relativedelta(months=1)).replace(day=1)
+        parent_partition_rec = {
+            "schema_name": self.schema,
+            "table_name": f"reporting_ocpallcostlineitem_daily_summary_{start_date.year}_{start_date.month}",
+            "partition_of_table_name": "reporting_ocpallcostlineitem_daily_summary",
+            "partitiion_type": PT.RANGE,
+            "partition_col": "usage_start",
+            "partition_parameters": {"default": False, "from": partition_start, "to": partition_end},
+            "active": True,
+            "subpartiion_type": PT.LIST,
+            "subpartition_col": "source_type",
+        }
+        parent_partition, created = get_or_create_partition(parent_partition_rec)
+        LOG.info(f"""{"Created" if created else "Found"} partition {parent_partition.table_name}""")
+
+        aws_subpartition_rec = {
+            "schema_name": self.schema,
+            "table_name": f"reporting_ocpallcostlineitem_daily_summary_{start_date.year}_{start_date.month}_aws",
+            "partition_of_table_name": parent_partition.table_name,
+            "partitiion_type": PT.LIST,
+            "partition_col": "source_type",
+            "partition_parameters": {"default": False, "in": ["AWS"]},
+            "active": True,
+        }
+        aws_subpartition, created = get_or_create_partition(aws_subpartition_rec)
+        LOG.info(f"""{"Created" if created else "Found"} partition {aws_subpartition.table_name}""")
+        if not created:
+            LOG.info(f"Dropping AWS subpartition of {parent_partition.table_name}")
+            aws_subpartition.delete()
+            aws_subpartition, created = get_or_create_partition(aws_subpartition_rec)
+            LOG.info(f"Created new AWS subpartition for {parent_partition.table_name}")
+
+        for sql_stmt in sql_split(sql):
+            sql_stmt = sql_stmt.strip()
+            sql_stmt, params = self.jinja_sql.prepare_query(sql_stmt, sql_params)
+            with connection.cursor() as cur:
+                cur.execute(sql_stmt, params)
