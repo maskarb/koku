@@ -20,7 +20,7 @@ def resolve_schema(*args, **kwargs):
 # to a partitioned table with the same definition
 # =====================================================
 def convert_matview_to_partitioned_table(
-    matview_name, partition_col, pk_def, col_defs, column_map={}, indexes=[], constraints=[], subpartition={}
+    matview_name, partition_col, pk_def, col_defs, column_map={}, indexes=[], constraints=[]
 ):
     # Resolve the current schema name
     target_schema = CACHE["schema"]
@@ -40,8 +40,6 @@ def convert_matview_to_partitioned_table(
         indexops={"override": indexes},
         constraintops={"override": constraints},
         column_map=column_map,
-        subpartition_type=subpartition.get("type"),
-        subpartition_key=subpartition.get("key"),
     )
 
     # Push the button, Frank.
@@ -1146,7 +1144,7 @@ def convert_reporting_ocpallcostlineitem_daily_summary(apps, schema_editor):
     target_table = "p_" + matview_name
     LOG.info(f"Preparing to convert materialized view {matview_name} to a partitioned table")
     pk_name = f"{matview_name[len('reporting_'):]}_pkey"
-    pk_def = ppart.PKDefinition(pk_name, ["usage_start", "source_type", "id"])
+    pk_def = ppart.PKDefinition(pk_name, ["usage_start", "id"])
     col_def = [
         ppart.ColumnDefinition(
             CACHE["schema"],
@@ -1256,7 +1254,6 @@ CREATE INDEX ocpallcstdlysumm_nsp ON reporting_ocpallcostlineitem_daily_summary 
         indexes=override_indexes,
         column_map=column_map,
         constraints=override_constraints,
-        subpartition={"type": "list", "key": "source_type"},
     )
 
 
@@ -1380,7 +1377,7 @@ CREATE INDEX ocpall_product_family_ilike ON reporting_ocpallcostlineitem_daily_s
 
 class Migration(migrations.Migration):
 
-    dependencies = [("reporting", "0186_subpartition_cols")]
+    dependencies = [("reporting", "0187_project_distribution")]
 
     operations = [
         migrations.RunPython(resolve_schema),
@@ -1393,4 +1390,5 @@ class Migration(migrations.Migration):
         migrations.RunPython(convert_reporting_ocpall_cost_summary_by_account),
         migrations.RunPython(convert_reporting_ocpall_cost_summary),
         migrations.RunPython(convert_reporting_ocpallcostlineitem_daily_summary),
+        migrations.RunPython(convert_reporting_ocpallcostlineitem_project_daily_summary),
     ]
