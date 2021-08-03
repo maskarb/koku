@@ -12,6 +12,7 @@ from decimal import InvalidOperation
 
 from celery import chain
 from dateutil import parser
+from dateutil.relativedelta import relativedelta
 from django.db import connection
 from django.db.utils import IntegrityError
 from tenant_schemas.utils import schema_context
@@ -24,6 +25,7 @@ from koku import celery_app
 from koku.cache import invalidate_view_cache_for_tenant_and_source_type
 from koku.middleware import KokuTenantMiddleware
 from masu.database.cost_model_db_accessor import CostModelDBAccessor
+from masu.database.ocp_report_db_accessor import OCPReportDBAccessor
 from masu.database.provider_db_accessor import ProviderDBAccessor
 from masu.database.report_manifest_db_accessor import ReportManifestDBAccessor
 from masu.database.report_stats_db_accessor import ReportStatsDBAccessor
@@ -47,6 +49,7 @@ from reporting.models import OCP_MATERIALIZED_VIEWS
 from reporting.models import OCP_ON_AWS_MATERIALIZED_VIEWS
 from reporting.models import OCP_ON_AZURE_MATERIALIZED_VIEWS
 from reporting.models import OCP_ON_INFRASTRUCTURE_MATERIALIZED_VIEWS
+from reporting.models import OCP_ON_INFRASTRUCTURE_PERSPECTIVE_SUMMARY_TABLES
 
 LOG = logging.getLogger(__name__)
 
@@ -255,7 +258,7 @@ def remove_expired_data(schema_name, provider, simulate, provider_uuid=None, que
     )
     LOG.info(stmt)
     _remove_expired_data(schema_name, provider, simulate, provider_uuid)
-    refresh_materialized_views.s(schema_name, provider, provider_uuid=provider_uuid).apply_async(
+    update_combined_summaries.s(schema_name, provider, provider_uuid=provider_uuid).apply_async(
         queue=queue_name or REFRESH_MATERIALIZED_VIEWS_QUEUE
     )
 
@@ -384,7 +387,7 @@ def update_summary_tables(  # noqa: C901
         raise ex
 
     if not provider_uuid:
-        refresh_materialized_views.s(
+        update_combined_summaries.s(
             schema_name, provider, manifest_id=manifest_id, queue_name=queue_name, tracing_id=tracing_id
         ).apply_async(queue=queue_name or REFRESH_MATERIALIZED_VIEWS_QUEUE)
         return
@@ -409,7 +412,7 @@ def update_summary_tables(  # noqa: C901
     if cost_model is not None:
         linked_tasks = update_cost_model_costs.s(
             schema_name, provider_uuid, start_date, end_date, tracing_id=tracing_id
-        ).set(queue=queue_name or UPDATE_COST_MODEL_COSTS_QUEUE) | refresh_materialized_views.si(
+        ).set(queue=queue_name or UPDATE_COST_MODEL_COSTS_QUEUE) | update_combined_summaries.si(
             schema_name, provider, provider_uuid=provider_uuid, manifest_id=manifest_id, tracing_id=tracing_id
         ).set(
             queue=queue_name or REFRESH_MATERIALIZED_VIEWS_QUEUE
@@ -417,7 +420,7 @@ def update_summary_tables(  # noqa: C901
     else:
         stmt = f"update_cost_model_costs skipped. " f" schema_name: {schema_name}, " f" provider_uuid: {provider_uuid}"
         LOG.info(log_json(tracing_id, stmt))
-        linked_tasks = refresh_materialized_views.s(
+        linked_tasks = update_combined_summaries.s(
             schema_name, provider, provider_uuid=provider_uuid, manifest_id=manifest_id, tracing_id=tracing_id
         ).set(queue=queue_name or REFRESH_MATERIALIZED_VIEWS_QUEUE)
 
@@ -519,12 +522,27 @@ def update_cost_model_costs(
         worker_cache.release_single_task(task_name, cache_args)
 
 
+def resolve_start_end_dates(schema_name, manifest_id):
+    end = datetime.date.today()
+    if manifest_id:
+        with ReportManifestDBAccessor() as manifest_accessor:
+            manifest = manifest_accessor.get_manifest_by_id(manifest_id)
+        start = manifest.billing_period_start_datetime.date()
+    else:
+        if end.day <= 10:
+            start = (end - relativedelta(months=1)).replace(day=1)
+        else:
+            start = end.replace(day=1)
+
+    return start, end
+
+
 # fmt: off
 @celery_app.task(  # noqa: C901
     name="masu.processor.tasks.refresh_materialized_views", queue=REFRESH_MATERIALIZED_VIEWS_QUEUE
 )
 # fmt: on
-def refresh_materialized_views(  # noqa: C901
+def update_combined_summaries(  # noqa: C901
     schema_name, provider_type, manifest_id=None, provider_uuid=None, synchronous=False, queue_name=None,
     tracing_id=None
 ):
@@ -536,7 +554,7 @@ def refresh_materialized_views(  # noqa: C901
         if worker_cache.single_task_is_running(task_name, cache_args):
             msg = f"Task {task_name} already running for {cache_args}. Requeuing."
             LOG.info(log_json(tracing_id, msg))
-            refresh_materialized_views.s(
+            update_combined_summaries.s(
                 schema_name,
                 provider_type,
                 manifest_id=manifest_id,
@@ -572,6 +590,13 @@ def refresh_materialized_views(  # noqa: C901
                 with connection.cursor() as cursor:
                     cursor.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {table_name}")
                     LOG.info(log_json(tracing_id, f"Refreshed {table_name}."))
+
+        if provider_type in (Provider.PROVIDER_OCP):
+            with OCPReportDBAccessor(schema_name) as ocp_accessor:
+                start_dt, end_dt = resolve_start_end_dates(schema_name, manifest_id)
+                sql_params = {"start_date": start_dt, "end_date": end_dt}
+                ocp_accessor._handle_partitions(OCP_ON_INFRASTRUCTURE_PERSPECTIVE_SUMMARY_TABLES, start_dt, end_dt)
+                ocp_accessor.populate_ocp_on_all_summaries(sql_params)
 
         invalidate_view_cache_for_tenant_and_source_type(schema_name, provider_type)
 

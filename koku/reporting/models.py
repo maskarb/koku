@@ -181,20 +181,22 @@ OCP_ON_AZURE_MATERIALIZED_VIEWS = (
     OCPAzureDatabaseSummary,
 )
 
-OCP_ON_INFRASTRUCTURE_MATERIALIZED_VIEWS = (
-    # OCPAllCostLineItemDailySummary,
-    # OCPAllCostSummary,
-    # OCPAllCostSummaryByAccount,
-    # OCPAllCostSummaryByService,
-    # OCPAllCostSummaryByRegion,
-    # OCPAllComputeSummary,
-    # OCPAllDatabaseSummary,
-    # OCPAllNetworkSummary,
-    # OCPAllStorageSummary,
-    # OCPAllCostLineItemProjectDailySummary,
-    OCPCostSummary,
-    OCPCostSummaryByProject,
-    OCPCostSummaryByNode,
+OCP_ON_INFRASTRUCTURE_MATERIALIZED_VIEWS = (OCPCostSummary, OCPCostSummaryByProject, OCPCostSummaryByNode)
+
+OCP_ON_INFRASTRUCTURE_PERSPECTIVE_BASE_SUMMARY_TABLES = (
+    OCPAllCostLineItemProjectDailySummary,
+    OCPAllCostLineItemDailySummary,
+)
+
+OCP_ON_INFRASTRUCTURE_PERSPECTIVE_SUMMARY_TABLES = (
+    OCPAllCostSummary,
+    OCPAllCostSummaryByAccount,
+    OCPAllCostSummaryByService,
+    OCPAllCostSummaryByRegion,
+    OCPAllComputeSummary,
+    OCPAllDatabaseSummary,
+    OCPAllNetworkSummary,
+    OCPAllStorageSummary,
 )
 
 GCP_MATERIALIZED_VIEWS = (

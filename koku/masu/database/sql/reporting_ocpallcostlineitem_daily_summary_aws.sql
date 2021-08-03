@@ -60,7 +60,7 @@ SELECT {{source_type}}::text AS source_type,
        aws.source_uuid,
        public.jsonb_sha256_text(aws.tags) as tags_hash,
        encode(sha256(decode(array_to_string(aws.namespace, '|'), 'escape')), 'hex') as namespace_hash
-  FROM {{schema | sqlsafe}}.reporting_ocpawscostlineitem_daily_summary AS aws
+  FROM {{schema | sqlsafe}}.{{daily_summary_table}} AS aws
  WHERE aws.usage_start >= {{start_date}}
    AND aws.usage_start <= {{end_date}}
    AND aws.source_uuid = {{source_uuid}};

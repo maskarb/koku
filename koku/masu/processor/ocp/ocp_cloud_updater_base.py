@@ -9,11 +9,12 @@ from api.provider.models import Provider
 from masu.database.ocp_report_db_accessor import OCPReportDBAccessor
 from masu.database.provider_db_accessor import ProviderDBAccessor
 from masu.external.date_accessor import DateAccessor
+from reporting.partition.mixins import PartitionMixin
 
 LOG = logging.getLogger(__name__)
 
 
-class OCPCloudUpdaterBase:
+class OCPCloudUpdaterBase(PartitionMixin):
     """Base class for OpenShift on cloud infrastructure operations."""
 
     def __init__(self, schema, provider, manifest):

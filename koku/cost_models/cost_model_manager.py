@@ -15,7 +15,7 @@ from api.utils import DateHelper
 from cost_models.models import CostModel
 from cost_models.models import CostModelMap
 from masu.processor.tasks import PRIORITY_QUEUE
-from masu.processor.tasks import refresh_materialized_views
+from masu.processor.tasks import update_combined_summaries
 from masu.processor.tasks import update_cost_model_costs
 
 
@@ -102,7 +102,7 @@ class CostModelManager:
                         tracing_id=tracing_id,
                         queue_name=PRIORITY_QUEUE,
                     ).set(queue=PRIORITY_QUEUE),
-                    refresh_materialized_views.si(
+                    update_combined_summaries.si(
                         schema_name,
                         provider.type,
                         provider_uuid=provider.uuid,

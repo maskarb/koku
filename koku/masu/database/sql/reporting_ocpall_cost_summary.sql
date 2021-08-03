@@ -1,8 +1,8 @@
 DELETE
   FROM {{schema | sqlsafe}}.reporting_ocpall_cost_summary
  WHERE usage_start >= {{start_date}}::date
-   AND usage_end <= {{end_date}}::date
-   AND source_uuid = {{source_uuid}}::uuid;
+   AND usage_end <= {{end_date}}::date;
+
 
 INSERT
   INTO {{schema | sqlsafe}}.reporting_ocpall_cost_summary
@@ -23,11 +23,10 @@ SELECT usage_start as usage_start,
        sum(unblended_cost) as unblended_cost,
        sum(markup_cost) as markup_cost,
        max(currency_code) as currency_code,
-       {{source_uuid}}::uuid
+       max(source_uuid) as source_uuid
   FROM {{schema | sqlsafe}}.reporting_ocpallcostlineitem_daily_summary
  WHERE usage_start >= {{start_date}}::date
    AND usage_end <= {{end_date}}::date
-   AND source_uuid = {{source_uuid}}::uuid
  GROUP
     BY usage_start,
        cluster_id,

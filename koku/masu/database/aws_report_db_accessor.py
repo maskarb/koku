@@ -12,7 +12,6 @@ from dateutil.parser import parse
 from django.db import connection
 from django.db.models import F
 from jinjasql import JinjaSql
-from sqlparse import split as sql_split
 from tenant_schemas.utils import schema_context
 
 from masu.config import Config
@@ -476,46 +475,3 @@ class AWSReportDBAccessor(ReportDBAccessorBase):
         results = self._execute_presto_raw_sql_query(self.schema, sql, bind_params=sql_params)
 
         return [json.loads(result[0]) for result in results]
-
-    def _execute_processing_script(self, script_file_path, sql_params):
-        sql = pkgutil.get_data("masu.database", script_file_path).decode("utf-8")
-        for sql_stmt in sql_split(sql):
-            sql_stmt = sql_stmt.strip()
-            if sql_stmt:
-                sql_stmt, params = self.jinja_sql.prepare_query(sql_stmt, sql_params)
-                with connection.cursor() as cur:
-                    cur.execute(sql_stmt, params)
-
-    def populate_ocp_on_all_summaries(self, sql_params):
-        self.populate_ocp_on_all_project_daily_summary(sql_params)
-
-    OCP_ON_ALL_PARTITIONED_TABLES = (
-        "reporting_ocpall_compute_summary",
-        "reporting_ocpall_network_summary",
-        "reporting_ocpall_storage_summary",
-        "reporting_ocpall_database_summary",
-    )
-
-    def populate_ocp_on_all_project_daily_summary(self, sql_params):
-        script_file_path = "sql/reporting_ocpallcostlineitem_project_daily_summary_aws.sql"
-        self._execute_processing_script(script_file_path, sql_params)
-
-    def populate_ocp_on_all_daily_summary(self, sql_params):
-        script_file_path = "sql/reporting_ocpallcostlineitem_daily_summary_aws.sql"
-        self._execute_processing_script(script_file_path, sql_params)
-
-    def populate_ocp_on_all_cost_summary(self, sql_params):
-        script_file_path = "sql/reporting_ocpall_cost_summary.sql"
-        self._execute_processing_script(script_file_path, sql_params)
-
-    def populate_ocp_on_all_cost_summary_by_account(self, sql_params):
-        script_file_path = "sql/reporting_ocpall_cost_summary_by_account.sql"
-        self._execute_processing_script(script_file_path, sql_params)
-
-    def populate_ocp_on_all_cost_summary_by_region(self, sql_params):
-        script_file_path = "sql/reporting_ocpall_cost_summary_by_region.sql"
-        self._execute_processing_script(script_file_path, sql_params)
-
-    def populate_ocp_on_all_cost_summary_by_service(self, sql_params):
-        script_file_path = "sql/reporting_ocpall_cost_summary_by_service.sql"
-        self._execute_processing_script(script_file_path, sql_params)

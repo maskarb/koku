@@ -22,6 +22,7 @@ from masu.config import Config
 from masu.database.koku_database_access import KokuDBAccess
 from masu.database.koku_database_access import mini_transaction_delete
 from reporting.models import PartitionedTable
+from reporting.partition.mixins import PartitionMixin
 from reporting_common import REPORT_COLUMN_MAP
 
 LOG = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ class ReportSchema:
             self.column_types = column_types
 
 
-class ReportDBAccessorBase(KokuDBAccess):
+class ReportDBAccessorBase(KokuDBAccess, PartitionMixin):
     """Class to interact with customer reporting tables."""
 
     def __init__(self, schema):

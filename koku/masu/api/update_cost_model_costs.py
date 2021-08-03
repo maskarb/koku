@@ -19,7 +19,7 @@ from api.provider.models import Provider
 from api.utils import DateHelper
 from masu.processor.tasks import PRIORITY_QUEUE
 from masu.processor.tasks import QUEUE_LIST
-from masu.processor.tasks import refresh_materialized_views
+from masu.processor.tasks import update_combined_summaries
 from masu.processor.tasks import update_cost_model_costs as cost_task
 
 LOG = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ def update_cost_model_costs(request):
     LOG.info("Calling update_cost_model_costs async task.")
     async_result = chain(
         cost_task.s(schema_name, provider_uuid, start_date, end_date, queue_name=queue_name).set(queue=queue_name),
-        refresh_materialized_views.si(
+        update_combined_summaries.si(
             schema_name, provider.type, provider_uuid=provider_uuid, queue_name=queue_name
         ).set(queue=queue_name),
     ).apply_async()

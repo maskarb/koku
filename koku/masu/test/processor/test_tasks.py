@@ -47,12 +47,12 @@ from masu.processor.tasks import get_report_files
 from masu.processor.tasks import normalize_table_options
 from masu.processor.tasks import record_all_manifest_files
 from masu.processor.tasks import record_report_status
-from masu.processor.tasks import refresh_materialized_views
 from masu.processor.tasks import REFRESH_MATERIALIZED_VIEWS_QUEUE
 from masu.processor.tasks import remove_expired_data
 from masu.processor.tasks import remove_stale_tenants
 from masu.processor.tasks import summarize_reports
 from masu.processor.tasks import update_all_summary_tables
+from masu.processor.tasks import update_combined_summaries
 from masu.processor.tasks import update_cost_model_costs
 from masu.processor.tasks import UPDATE_COST_MODEL_COSTS_QUEUE
 from masu.processor.tasks import update_summary_tables
@@ -745,7 +745,7 @@ class TestUpdateSummaryTablesTask(MasuTestCase):
             update_cost_model_costs.s(
                 self.schema, provider_aws_uuid, expected_start_date, expected_end_date, tracing_id=tracing_id
             ).set(queue=UPDATE_COST_MODEL_COSTS_QUEUE)
-            | refresh_materialized_views.si(
+            | update_combined_summaries.si(
                 self.schema, provider, provider_uuid=provider_aws_uuid, manifest_id=manifest_id, tracing_id=tracing_id
             ).set(queue=REFRESH_MATERIALIZED_VIEWS_QUEUE)
         )
@@ -759,7 +759,7 @@ class TestUpdateSummaryTablesTask(MasuTestCase):
         mock_update.s.assert_called_with(ANY, ANY, ANY, str(start_date), ANY, queue_name=ANY)
 
     @patch("masu.processor.worker_cache.CELERY_INSPECT")
-    def test_refresh_materialized_views_aws(self, mock_cache):
+    def test_update_combined_summaries_aws(self, mock_cache):
         """Test that materialized views are refreshed."""
         manifest_dict = {
             "assembly_id": "12345",
@@ -772,7 +772,7 @@ class TestUpdateSummaryTablesTask(MasuTestCase):
             manifest = manifest_accessor.add(**manifest_dict)
             manifest.save()
 
-        refresh_materialized_views(
+        update_combined_summaries(
             self.schema, Provider.PROVIDER_AWS, provider_uuid=self.aws_provider_uuid, manifest_id=manifest.id
         )
 
@@ -790,7 +790,7 @@ class TestUpdateSummaryTablesTask(MasuTestCase):
             self.assertIsNotNone(accessor.provider.data_updated_timestamp)
 
     @patch("masu.processor.worker_cache.CELERY_INSPECT")
-    def test_refresh_materialized_views_azure(self, mock_cache):
+    def test_update_combined_summaries_azure(self, mock_cache):
         """Test that materialized views are refreshed."""
         manifest_dict = {
             "assembly_id": "12345",
@@ -803,7 +803,7 @@ class TestUpdateSummaryTablesTask(MasuTestCase):
             manifest = manifest_accessor.add(**manifest_dict)
             manifest.save()
 
-        refresh_materialized_views(
+        update_combined_summaries(
             self.schema, Provider.PROVIDER_AZURE, provider_uuid=self.azure_provider_uuid, manifest_id=manifest.id
         )
 
@@ -821,7 +821,7 @@ class TestUpdateSummaryTablesTask(MasuTestCase):
             self.assertIsNotNone(accessor.provider.data_updated_timestamp)
 
     @patch("masu.processor.worker_cache.CELERY_INSPECT")
-    def test_refresh_materialized_views_ocp(self, mock_cache):
+    def test_update_combined_summaries_ocp(self, mock_cache):
         """Test that materialized views are refreshed."""
         manifest_dict = {
             "assembly_id": "12345",
@@ -834,7 +834,7 @@ class TestUpdateSummaryTablesTask(MasuTestCase):
             manifest = manifest_accessor.add(**manifest_dict)
             manifest.save()
 
-        refresh_materialized_views(
+        update_combined_summaries(
             self.schema, Provider.PROVIDER_OCP, provider_uuid=self.ocp_provider_uuid, manifest_id=manifest.id
         )
 
@@ -852,7 +852,7 @@ class TestUpdateSummaryTablesTask(MasuTestCase):
             self.assertIsNotNone(accessor.provider.data_updated_timestamp)
 
     @patch("masu.processor.worker_cache.CELERY_INSPECT")
-    def test_refresh_materialized_views_gcp(self, mock_cache):
+    def test_update_combined_summaries_gcp(self, mock_cache):
         """Test that materialized views are refreshed."""
         manifest_dict = {
             "assembly_id": "12345",
@@ -865,7 +865,7 @@ class TestUpdateSummaryTablesTask(MasuTestCase):
             manifest = manifest_accessor.add(**manifest_dict)
             manifest.save()
 
-        refresh_materialized_views(
+        update_combined_summaries(
             self.schema, Provider.PROVIDER_GCP, provider_uuid=self.gcp_provider_uuid, manifest_id=manifest.id
         )
 
@@ -1260,15 +1260,15 @@ class TestWorkerCacheThrottling(MasuTestCase):
             update_cost_model_costs(self.schema, self.aws_provider_uuid, expected_start_date, expected_end_date)
             self.assertFalse(self.single_task_is_running(task_name, cache_args))
 
-    @patch("masu.processor.tasks.refresh_materialized_views.s")
+    @patch("masu.processor.tasks.update_combined_summaries.s")
     @patch("masu.processor.tasks.WorkerCache.release_single_task")
     @patch("masu.processor.tasks.WorkerCache.lock_single_task")
     @patch("masu.processor.worker_cache.CELERY_INSPECT")
-    def test_refresh_materialized_views_throttled(self, mock_inspect, mock_lock, mock_release, mock_delay):
+    def test_update_combined_summaries_throttled(self, mock_inspect, mock_lock, mock_release, mock_delay):
         """Test that refresh materialized views runs with cache lock."""
         mock_lock.side_effect = self.lock_single_task
 
-        task_name = "masu.processor.tasks.refresh_materialized_views"
+        task_name = "masu.processor.tasks.update_combined_summaries"
         cache_args = [self.schema, Provider.PROVIDER_AWS]
 
         manifest_dict = {
@@ -1282,10 +1282,10 @@ class TestWorkerCacheThrottling(MasuTestCase):
             manifest = manifest_accessor.add(**manifest_dict)
             manifest.save()
 
-        refresh_materialized_views(self.schema, Provider.PROVIDER_AWS, manifest_id=manifest.id)
+        update_combined_summaries(self.schema, Provider.PROVIDER_AWS, manifest_id=manifest.id)
         mock_delay.assert_not_called()
-        refresh_materialized_views(self.schema, Provider.PROVIDER_AWS, manifest_id=manifest.id)
-        refresh_materialized_views(self.schema, Provider.PROVIDER_AWS, manifest_id=manifest.id)
+        update_combined_summaries(self.schema, Provider.PROVIDER_AWS, manifest_id=manifest.id)
+        update_combined_summaries(self.schema, Provider.PROVIDER_AWS, manifest_id=manifest.id)
         mock_delay.assert_called()
         self.assertTrue(self.single_task_is_running(task_name, cache_args))
         # Let the cache entry expire

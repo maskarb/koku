@@ -63,7 +63,7 @@ SELECT {{source_type}} as source_type,
        sum(pod_cost) as pod_cost,
        max(currency_code) as currency_code,
        {{source_uuid}}::uuid as source_uuid
-  FROM {{schema | sqlsafe}}.reporting_ocpawscostlineitem_project_daily_summary
+  FROM {{schema | sqlsafe}}.{{project_daily_summary_table}}
  WHERE usage_start >= {{start_date}}
    AND usage_start <= {{end_date}}
    AND source_uuid = {{source_uuid}}::uuid
