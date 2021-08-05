@@ -2291,9 +2291,9 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
         self.populate_ocp_on_all_cost_summary_by_account(sql_params)
         self.populate_ocp_on_all_cost_summary_by_region(sql_params)
         self.populate_ocp_on_all_cost_summary_by_service(sql_params)
+        self.populate_ocp_on_all_compute_summary(sql_params)
 
     OCP_ON_ALL_PARTITIONED_TABLES = (
-        "reporting_ocpall_compute_summary",
         "reporting_ocpall_network_summary",
         "reporting_ocpall_storage_summary",
         "reporting_ocpall_database_summary",
@@ -2310,18 +2310,26 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
         self._execute_processing_script(script_file_path, sql_params)
 
     def populate_ocp_on_all_cost_summary(self, sql_params):
-        LOG.info(f"Populating {sql_params['source_type']} records for ocpall_cost_summary")
+        LOG.info("Populating records for ocpall_cost_summary")
         script_file_path = "sql/reporting_ocpall_cost_summary.sql"
         self._execute_processing_script(script_file_path, sql_params)
 
     def populate_ocp_on_all_cost_summary_by_account(self, sql_params):
+        LOG.info("Populating records for ocpall_cost_summary_by_account")
         script_file_path = "sql/reporting_ocpall_cost_summary_by_account.sql"
         self._execute_processing_script(script_file_path, sql_params)
 
     def populate_ocp_on_all_cost_summary_by_region(self, sql_params):
+        LOG.info("Populating records for ocpall_cost_summary_by_region")
         script_file_path = "sql/reporting_ocpall_cost_summary_by_region.sql"
         self._execute_processing_script(script_file_path, sql_params)
 
     def populate_ocp_on_all_cost_summary_by_service(self, sql_params):
+        LOG.info("Populating records for ocpall_cost_summary_by_service")
         script_file_path = "sql/reporting_ocpall_cost_summary_by_service.sql"
+        self._execute_processing_script(script_file_path, sql_params)
+
+    def populate_ocp_on_all_compute_summary(self, sql_params):
+        LOG.info("Populating records for ocpall_compute_summary")
+        script_file_path = "sql/reporting_ocpall_compute_summary.sql"
         self._execute_processing_script(script_file_path, sql_params)
