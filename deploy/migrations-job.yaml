@@ -1,0 +1,118 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: sample-app
+objects:
+- apiVersion: cloud.redhat.com/v1alpha1
+  kind: ClowdApp
+  metadata:
+    name: sample-app
+  spec:
+    envName: ${ENV_NAME}
+    # Creates a database if local mode, or uses RDS in production
+    database:
+      sharedDbAppName: koku
+    dependencies:
+      - koku
+
+    jobs:
+    - name: koku-migrations
+      podSpec:
+      - command:  # this `command` overrides haberdasher; when implementing haberdasher, change this to `args`
+          - /bin/bash
+          - -c
+          - $HOME/scripts/run_migrations.sh
+        image: ${IMAGE}:${IMAGE_TAG}
+        env:
+        - name: CLOWDER_ENABLED
+          value: ${CLOWDER_ENABLED}
+        - name: DJANGO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: django-secret-key
+              name: koku-secret
+              optional: false
+        - name: APP_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: DEVELOPMENT
+          value: ${DEVELOPMENT}
+        - name: LOG_LEVEL
+          value: ${LOG_LEVEL}
+        - name: KOKU_LOG_LEVEL
+          value: ${KOKU_LOG_LEVEL}
+        - name: DJANGO_LOG_LEVEL
+          value: ${DJANGO_LOG_LEVEL}
+        - name: DJANGO_LOG_FORMATTER
+          value: ${DJANGO_LOG_FORMATTER}
+        - name: DJANGO_LOG_HANDLERS
+          value: ${DJANGO_LOG_HANDLERS}
+        - name: DJANGO_LOG_DIRECTORY
+          value: ${DJANGO_LOG_DIRECTORY}
+        - name: DJANGO_LOGGING_FILE
+          value: ${DJANGO_LOG_FILE}
+        - name: prometheus_multiproc_dir
+          value: ${PROMETHEUS_DIR}
+        - name: KOKU_API_ENABLE_SENTRY
+          value: ${ENABLE_API_SENTRY}
+        - name: KOKU_SENTRY_ENVIRONMENT
+          value: ${KOKU_SENTRY_ENV}
+        - name: KOKU_SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              key: api-sentry-dsn
+              name: koku-sentry
+              optional: true
+
+parameters:
+- name: ENV_NAME
+  required: true
+  value: koku-env
+- name: CLOWDER_ENABLED
+  required: true
+  value: "True"
+- description: Image tag
+  name: IMAGE_TAG
+  required: true
+  value: latest
+- description: Image
+  name: IMAGE
+  required: true
+  value: quay.io/cloudservices/koku
+- displayName: Development
+  name: DEVELOPMENT
+  value: "False"
+- displayName: Gunicorn log level
+  name: LOG_LEVEL
+  value: INFO
+- displayName: Koku log level
+  name: KOKU_LOG_LEVEL
+  value: INFO
+- displayName: Django log level
+  name: DJANGO_LOG_LEVEL
+  value: INFO
+- displayName: Django log formatter
+  name: DJANGO_LOG_FORMATTER
+  value: simple
+- displayName: Django log handlers
+  name: DJANGO_LOG_HANDLERS
+  value: console
+- displayName: Django log dir
+  name: DJANGO_LOG_DIRECTORY
+  required: false
+- displayName: Django logging file
+  name: DJANGO_LOG_FILE
+  required: false
+- displayName: Prometheus multiproc dir
+  name: PROMETHEUS_DIR
+  value: /tmp
+- description: Koku Sentry Env
+  displayName: Koku Sentry Env
+  name: KOKU_SENTRY_ENV
+  value: dev
+- description: Enable API Sentry
+  displayName: Enable API Sentry
+  name: ENABLE_API_SENTRY
+  value: "False"

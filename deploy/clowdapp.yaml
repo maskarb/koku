@@ -106,13 +106,13 @@ objects:
         - name: CACHED_VIEWS_DISABLED
           value: ${CACHED_VIEWS_DISABLED}
         image: ${IMAGE}:${IMAGE_TAG}
-        initContainers:
-        - command:
-          - /bin/bash
-          - -c
-          - $HOME/scripts/run_migrations.sh
-          image: ${IMAGE}:${IMAGE_TAG}
-          inheritEnv: true
+        # initContainers:
+        # - command:
+        #   - /bin/bash
+        #   - -c
+        #   - $HOME/scripts/run_migrations.sh
+        #   image: ${IMAGE}:${IMAGE_TAG}
+        #   inheritEnv: true
         livenessProbe:
           failureThreshold: 5
           httpGet:
