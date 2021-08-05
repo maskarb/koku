@@ -122,3 +122,5 @@ parameters:
   displayName: Enable API Sentry
   name: ENABLE_API_SENTRY
   value: "False"
+- name: S3_BUCKET_NAME
+  value: koku-eph-s3

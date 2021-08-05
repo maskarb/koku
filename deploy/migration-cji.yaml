@@ -1,7 +1,7 @@
 apiVersion: cloud.redhat.com/v1alpha1
 kind: ClowdJobInvocation
 metadata:
-  name: cost-mgmt-smoke
+  name: koku-migrations
 spec:
   appName: koku-migrations
   jobs:
