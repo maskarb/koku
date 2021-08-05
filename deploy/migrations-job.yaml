@@ -2,12 +2,12 @@
 apiVersion: v1
 kind: Template
 metadata:
-  name: sample-app
+  name: koku-migrations
 objects:
 - apiVersion: cloud.redhat.com/v1alpha1
   kind: ClowdApp
   metadata:
-    name: sample-app
+    name: koku-migrations
   spec:
     envName: ${ENV_NAME}
     # Creates a database if local mode, or uses RDS in production
