@@ -6,21 +6,20 @@
 import logging
 import time
 
-from django.conf import settings
 from django.db import connection
 from django.db import InterfaceError
 from django.db import OperationalError
-from prometheus_client import CollectorRegistry
 from prometheus_client import Counter
 from prometheus_client import Gauge
-from prometheus_client import push_to_gateway
 
 from . import celery_app
+from masu.prometheus_stats import WORKER_REGISTRY
 
 LOG = logging.getLogger(__name__)
-REGISTRY = CollectorRegistry()
-DB_CONNECTION_ERRORS_COUNTER = Counter("db_connection_errors", "Number of DB connection errors", registry=REGISTRY)
-PGSQL_GAUGE = Gauge("postgresql_schema_size_bytes", "PostgreSQL DB Size (bytes)", ["schema"], registry=REGISTRY)
+DB_CONNECTION_ERRORS_COUNTER = Counter(
+    "db_connection_errors", "Number of DB connection errors", registry=WORKER_REGISTRY
+)
+PGSQL_GAUGE = Gauge("postgresql_schema_size_bytes", "PostgreSQL DB Size (bytes)", ["schema"], registry=WORKER_REGISTRY)
 
 DEFAULT = "celery"
 
@@ -126,9 +125,3 @@ def collect_metrics(self):
     db_status = DatabaseStatus()
     db_status.connection_check()
     db_status.collect()
-    LOG.debug("Pushing stats to gateway: %s", settings.PROMETHEUS_PUSHGATEWAY)
-    try:
-        push_to_gateway(settings.PROMETHEUS_PUSHGATEWAY, job="koku.metrics.collect_metrics", registry=REGISTRY)
-    except OSError as exc:
-        LOG.error("Problem reaching pushgateway: %s", exc)
-        self.update_state(state="FAILURE", meta={"result": str(exc), "traceback": str(exc.__traceback__)})

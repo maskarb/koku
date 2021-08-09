@@ -35,8 +35,8 @@ def start_probe_server(server_cls, logger=LOG):
         httpd.serve_forever()
 
     logger.info("starting liveness/readiness probe server")
-    daemon = threading.Thread(name="probe_server", target=start_server)
-    daemon.setDaemon(True)  # Set as a daemon so it will be killed once the main thread is dead.
+    # Set as a daemon so it will be stopped once the main thread is stopped.
+    daemon = threading.Thread(name="probe_server", target=start_server, daemon=True)
     daemon.start()
     logger.info(f"liveness/readiness probe server started on port {httpd.server_port}")
 
@@ -59,7 +59,7 @@ class ProbeServer(ABC, MetricsHandler):
     def _write_response(self, response):
         """Write the response to the client."""
         self._set_headers(response.status_code)
-        self.wfile.write(response.json.encode("utf-8"))
+        self.wfile.write(response.json)
 
     def do_GET(self):
         """Handle GET requests."""
@@ -109,4 +109,4 @@ class ProbeResponse:
     def __init__(self, status_code, msg):
         """Initialize the response object."""
         self.status_code = status_code
-        self.json = json.dumps({"status": status_code, "msg": msg})
+        self.json = json.dumps({"status": status_code, "msg": msg}).encode("utf-8")
