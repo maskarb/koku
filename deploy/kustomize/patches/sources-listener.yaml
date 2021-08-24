@@ -5,11 +5,11 @@
     minReplicas: ${{SOURCES_LISTENER_MIN_REPLICAS}}
     webServices:
       public:
-        enabled: true
+        enabled: false
       private:
         enabled: false
       metrics:
-        enabled: false
+        enabled: true
     podSpec:
       image: ${IMAGE}:${IMAGE_TAG}
       command:  # this `command` overrides haberdasher; when implementing haberdasher, change this to `args`
@@ -21,6 +21,12 @@
           value: ${CLOWDER_ENABLED}
         - name: SOURCES
           value: "true"
+        - name: SOURCES_PSK
+          valueFrom:
+            secretKeyRef:
+              key: psks
+              name: ${SOURCES_PSK_SECRET_NAME}
+              optional: true
         - name: DJANGO_SECRET_KEY
           valueFrom:
             secretKeyRef:
@@ -88,7 +94,7 @@
       livenessProbe:
         httpGet:
           path: /livez
-          port: web
+          port: metrics
           scheme: HTTP
         initialDelaySeconds: 30
         periodSeconds: 20
@@ -98,7 +104,7 @@
       readinessProbe:
         httpGet:
           path: /readyz
-          port: web
+          port: metrics
           scheme: HTTP
         initialDelaySeconds: 30
         periodSeconds: 20
@@ -116,7 +122,11 @@
       - name: gcp-credentials
         mountPath: /etc/gcp
         readOnly: true
+      - name: prometheus-data
+        mountPath: ${PROMETHEUS_DIR}
       volumes:
+      - name: prometheus-data
+        emptyDir: {}
       - name: gcp-credentials
         secret:
           secretName: koku-gcp

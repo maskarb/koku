@@ -144,7 +144,11 @@ objects:
         - mountPath: /etc/gcp
           name: gcp-credentials
           readOnly: true
+        - mountPath: ${PROMETHEUS_DIR}
+          name: prometheus-data
         volumes:
+        - emptyDir: {}
+          name: prometheus-data
         - name: gcp-credentials
           secret:
             items:
@@ -241,7 +245,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /livez
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -251,7 +255,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /readyz
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -265,12 +269,16 @@ objects:
             cpu: ${LISTENER_CPU_REQUEST}
             memory: ${LISTENER_MEMORY_REQUEST}
         volumeMounts:
+        - mountPath: ${PROMETHEUS_DIR}
+          name: prometheus-data
         - mountPath: /var/tmp/masu/
           name: koku-listener-data
         - mountPath: /etc/gcp
           name: gcp-credentials
           readOnly: true
         volumes:
+        - emptyDir: {}
+          name: prometheus-data
         - emptyDir: {}
           name: koku-listener-data
         - name: gcp-credentials
@@ -285,7 +293,7 @@ objects:
         private:
           enabled: false
         public:
-          enabled: true
+          enabled: false
     - minReplicas: ${{MASU_MIN_REPLICAS}}
       name: clowder-masu
       podSpec:
@@ -407,7 +415,11 @@ objects:
         - mountPath: /etc/gcp
           name: gcp-credentials
           readOnly: true
+        - mountPath: ${PROMETHEUS_DIR}
+          name: prometheus-data
         volumes:
+        - emptyDir: {}
+          name: prometheus-data
         - name: gcp-credentials
           secret:
             items:
@@ -568,6 +580,12 @@ objects:
           value: ${CLOWDER_ENABLED}
         - name: SOURCES
           value: "true"
+        - name: SOURCES_PSK
+          valueFrom:
+            secretKeyRef:
+              key: psks
+              name: ${SOURCES_PSK_SECRET_NAME}
+              optional: true
         - name: DJANGO_SECRET_KEY
           valueFrom:
             secretKeyRef:
@@ -664,7 +682,11 @@ objects:
         - mountPath: /etc/gcp
           name: gcp-credentials
           readOnly: true
+        - mountPath: ${PROMETHEUS_DIR}
+          name: prometheus-data
         volumes:
+        - emptyDir: {}
+          name: prometheus-data
         - name: gcp-credentials
           secret:
             items:
@@ -690,6 +712,12 @@ objects:
           value: ${CLOWDER_ENABLED}
         - name: SOURCES
           value: "true"
+        - name: SOURCES_PSK
+          valueFrom:
+            secretKeyRef:
+              key: psks
+              name: ${SOURCES_PSK_SECRET_NAME}
+              optional: true
         - name: DJANGO_SECRET_KEY
           valueFrom:
             secretKeyRef:
@@ -759,7 +787,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /livez
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -769,7 +797,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /readyz
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -786,7 +814,11 @@ objects:
         - mountPath: /etc/gcp
           name: gcp-credentials
           readOnly: true
+        - mountPath: ${PROMETHEUS_DIR}
+          name: prometheus-data
         volumes:
+        - emptyDir: {}
+          name: prometheus-data
         - name: gcp-credentials
           secret:
             items:
@@ -795,11 +827,11 @@ objects:
             secretName: koku-gcp
       webServices:
         metrics:
-          enabled: false
+          enabled: true
         private:
           enabled: false
         public:
-          enabled: true
+          enabled: false
     - minReplicas: ${{WORKER_CELERY_MIN_REPLICAS}}
       name: clowder-worker-celery
       podSpec:
@@ -914,7 +946,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /livez
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -924,7 +956,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /readyz
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -943,7 +975,11 @@ objects:
         - mountPath: /etc/gcp
           name: gcp-credentials
           readOnly: true
+        - mountPath: ${PROMETHEUS_DIR}
+          name: prometheus-data
         volumes:
+        - emptyDir: {}
+          name: prometheus-data
         - emptyDir: {}
           name: koku-worker-data
         - name: gcp-credentials
@@ -958,7 +994,7 @@ objects:
         private:
           enabled: false
         public:
-          enabled: true
+          enabled: false
     - minReplicas: ${{WORKER_COST_MODEL_MIN_REPLICAS}}
       name: clowder-worker-cost-model
       podSpec:
@@ -1073,7 +1109,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /livez
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -1083,7 +1119,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /readyz
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -1102,7 +1138,11 @@ objects:
         - mountPath: /etc/gcp
           name: gcp-credentials
           readOnly: true
+        - mountPath: ${PROMETHEUS_DIR}
+          name: prometheus-data
         volumes:
+        - emptyDir: {}
+          name: prometheus-data
         - emptyDir: {}
           name: koku-worker-data
         - name: gcp-credentials
@@ -1117,7 +1157,7 @@ objects:
         private:
           enabled: false
         public:
-          enabled: true
+          enabled: false
     - minReplicas: ${{WORKER_DOWNLOAD_MIN_REPLICAS}}
       name: clowder-worker-download
       podSpec:
@@ -1232,7 +1272,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /livez
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -1242,7 +1282,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /readyz
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -1261,7 +1301,11 @@ objects:
         - mountPath: /etc/gcp
           name: gcp-credentials
           readOnly: true
+        - mountPath: ${PROMETHEUS_DIR}
+          name: prometheus-data
         volumes:
+        - emptyDir: {}
+          name: prometheus-data
         - emptyDir: {}
           name: koku-worker-data
         - name: gcp-credentials
@@ -1276,7 +1320,7 @@ objects:
         private:
           enabled: false
         public:
-          enabled: true
+          enabled: false
     - minReplicas: ${{WORKER_OCP_MIN_REPLICAS}}
       name: clowder-worker-ocp
       podSpec:
@@ -1391,7 +1435,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /livez
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -1401,7 +1445,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /readyz
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -1420,7 +1464,11 @@ objects:
         - mountPath: /etc/gcp
           name: gcp-credentials
           readOnly: true
+        - mountPath: ${PROMETHEUS_DIR}
+          name: prometheus-data
         volumes:
+        - emptyDir: {}
+          name: prometheus-data
         - emptyDir: {}
           name: koku-worker-data
         - name: gcp-credentials
@@ -1435,7 +1483,7 @@ objects:
         private:
           enabled: false
         public:
-          enabled: true
+          enabled: false
     - minReplicas: ${{WORKER_PRIORITY_MIN_REPLICAS}}
       name: clowder-worker-priority
       podSpec:
@@ -1550,7 +1598,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /livez
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -1560,7 +1608,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /readyz
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -1579,7 +1627,11 @@ objects:
         - mountPath: /etc/gcp
           name: gcp-credentials
           readOnly: true
+        - mountPath: ${PROMETHEUS_DIR}
+          name: prometheus-data
         volumes:
+        - emptyDir: {}
+          name: prometheus-data
         - emptyDir: {}
           name: koku-worker-data
         - name: gcp-credentials
@@ -1594,7 +1646,7 @@ objects:
         private:
           enabled: false
         public:
-          enabled: true
+          enabled: false
     - minReplicas: ${{WORKER_REFRESH_MIN_REPLICAS}}
       name: clowder-worker-refresh
       podSpec:
@@ -1709,7 +1761,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /livez
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -1719,7 +1771,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /readyz
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -1738,7 +1790,11 @@ objects:
         - mountPath: /etc/gcp
           name: gcp-credentials
           readOnly: true
+        - mountPath: ${PROMETHEUS_DIR}
+          name: prometheus-data
         volumes:
+        - emptyDir: {}
+          name: prometheus-data
         - emptyDir: {}
           name: koku-worker-data
         - name: gcp-credentials
@@ -1753,7 +1809,7 @@ objects:
         private:
           enabled: false
         public:
-          enabled: true
+          enabled: false
     - minReplicas: ${{WORKER_SUMMARY_MIN_REPLICAS}}
       name: clowder-worker-summary
       podSpec:
@@ -1868,7 +1924,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /livez
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -1878,7 +1934,7 @@ objects:
           failureThreshold: 5
           httpGet:
             path: /readyz
-            port: web
+            port: metrics
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 20
@@ -1897,7 +1953,11 @@ objects:
         - mountPath: /etc/gcp
           name: gcp-credentials
           readOnly: true
+        - mountPath: ${PROMETHEUS_DIR}
+          name: prometheus-data
         volumes:
+        - emptyDir: {}
+          name: prometheus-data
         - emptyDir: {}
           name: koku-worker-data
         - name: gcp-credentials
@@ -1912,7 +1972,7 @@ objects:
         private:
           enabled: false
         public:
-          enabled: true
+          enabled: false
     envName: ${ENV_NAME}
     inMemoryDb: true
     kafkaTopics:
@@ -2149,6 +2209,9 @@ parameters:
 - description: Source API Path prefix
   name: SOURCES_API_PREFIX
   value: /api/sources/v1.0
+- description: Sources PSK secret name
+  name: SOURCES_PSK_SECRET_NAME
+  value: sources-psk
 - displayName: Secret Key (Ephemeral)
   from: '[a-f0-9]{20}'
   generate: expression

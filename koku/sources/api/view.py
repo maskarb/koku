@@ -167,7 +167,8 @@ class SourcesViewSet(*MIXIN_LIST):
         pk = self.kwargs.get("pk")
         try:
             uuid = UUIDField().to_internal_value(data=pk)
-            obj = Sources.objects.get(source_uuid=uuid)
+            account_id = self.request.user.customer.account_id
+            obj = Sources.objects.get(account_id=account_id, source_uuid=uuid)
             if obj:
                 return obj
         except (ValidationError, Sources.DoesNotExist):
@@ -218,7 +219,7 @@ class SourcesViewSet(*MIXIN_LIST):
                 source["current_month_data"] = False
                 source["previous_month_data"] = False
                 source["has_data"] = False
-                source["infrastructure"] = "Unknown"
+                source["infrastructure"] = {}
                 source["cost_models"] = []
             else:
                 source["provider_linked"] = True
@@ -226,7 +227,7 @@ class SourcesViewSet(*MIXIN_LIST):
                 source["current_month_data"] = manager.get_current_month_data_exists()
                 source["previous_month_data"] = manager.get_previous_month_data_exists()
                 source["has_data"] = manager.get_any_data_exists()
-                source["infrastructure"] = manager.get_infrastructure_name()
+                source["infrastructure"] = manager.get_infrastructure_info()
                 source["cost_models"] = [
                     {"name": model.name, "uuid": model.uuid} for model in manager.get_cost_models(tenant)
                 ]
@@ -237,6 +238,7 @@ class SourcesViewSet(*MIXIN_LIST):
         """Get a source."""
         response = super().retrieve(request=request, args=args, kwargs=kwargs)
         _, tenant = self._get_account_and_tenant(request)
+
         if response.data.get("authentication", {}).get("credentials", {}).get("client_secret"):
             del response.data["authentication"]["credentials"]["client_secret"]
         try:
@@ -247,7 +249,7 @@ class SourcesViewSet(*MIXIN_LIST):
             response.data["current_month_data"] = False
             response.data["previous_month_data"] = False
             response.data["has_data"] = False
-            response.data["infrastructure"] = "Unknown"
+            response.data["infrastructure"] = {}
             response.data["cost_models"] = []
         else:
             response.data["provider_linked"] = True
@@ -256,7 +258,7 @@ class SourcesViewSet(*MIXIN_LIST):
             response.data["previous_month_data"] = manager.get_previous_month_data_exists()
             response.data["has_data"] = manager.get_any_data_exists()
 
-            response.data["infrastructure"] = manager.get_infrastructure_name()
+            response.data["infrastructure"] = manager.get_infrastructure_info()
             response.data["cost_models"] = [
                 {"name": model.name, "uuid": model.uuid} for model in manager.get_cost_models(tenant)
             ]
