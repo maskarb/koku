@@ -7,6 +7,7 @@
 import logging
 import os
 import sys
+from unittest.mock import patch
 
 from django.conf import settings
 from django.db import connections
@@ -45,6 +46,14 @@ class KokuTestRunner(DiscoverRunner):
         )
 
         return main_db
+
+    @patch("koku.presto_database._execute")
+    @patch("masu.database.report_db_accessor_base.ReportDBAccessorBase._execute_presto_multipart_sql_query")
+    @patch("masu.database.report_db_accessor_base.ReportDBAccessorBase._execute_presto_raw_sql_query")
+    @patch("masu.processor.report_parquet_processor_base.ReportParquetProcessorBase._execute_sql")
+    def run_tests(self, test_labels, mock_execute, mock_raw, mock_multipart, mock_presto, extra_tests=None, **kwargs):
+        """Mock Trino DB connections and run tests."""
+        super().run_tests(test_labels, extra_tests=extra_tests, kwargs=kwargs)
 
 
 def setup_databases(verbosity, interactive, keepdb=False, debug_sql=False, parallel=0, aliases=None, **kwargs):
@@ -89,13 +98,21 @@ def setup_databases(verbosity, interactive, keepdb=False, debug_sql=False, paral
                             for tag_key in OCP_ENABLED_TAGS:
                                 OCPEnabledTagKeys.objects.get_or_create(key=tag_key)
                         data_loader = ModelBakeryDataLoader(KokuTestRunner.schema, customer)
-                        aws_bills = data_loader.load_aws_data()
                         ocp_on_aws_cluster_id = "OCP-on-AWS"
                         ocp_on_azure_cluster_id = "OCP-on-Azure"
-                        ocp_on_aws_report_periods = data_loader.load_openshift_data(ocp_on_aws_cluster_id)
-                        ocp_on_azure_report_periods = data_loader.load_openshift_data(ocp_on_azure_cluster_id)
-                        azure_bills = data_loader.load_azure_data()
-                        gcp_bills = data_loader.load_gcp_data()
+                        ocp_on_prem_cluster_id = "OCP-on-Prem"
+                        ocp_on_aws_ocp_provider, ocp_on_aws_report_periods = data_loader.load_openshift_data(
+                            ocp_on_aws_cluster_id, on_cloud=True
+                        )
+                        ocp_on_azure_ocp_provider, ocp_on_azure_report_periods = data_loader.load_openshift_data(
+                            ocp_on_azure_cluster_id, on_cloud=True
+                        )
+                        _, __ = data_loader.load_openshift_data(ocp_on_prem_cluster_id, on_cloud=False)
+                        _, aws_bills = data_loader.load_aws_data(linked_openshift_provider=ocp_on_aws_ocp_provider)
+                        _, azure_bills = data_loader.load_azure_data(
+                            linked_openshift_provider=ocp_on_azure_ocp_provider
+                        )
+                        _, gcp_bills = data_loader.load_gcp_data()
                         data_loader.load_openshift_on_cloud_data(
                             Provider.PROVIDER_AWS_LOCAL, ocp_on_aws_cluster_id, aws_bills, ocp_on_aws_report_periods
                         )
