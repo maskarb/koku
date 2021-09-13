@@ -13,11 +13,14 @@ from rest_framework.settings import api_settings
 from api.common.pagination import ListPaginator
 from api.currency.currencies import CURRENCIES
 
+# from api.currency.exchange.exchange import populate_exchange_rates
+
 
 @api_view(("GET",))
 @permission_classes((permissions.AllowAny,))
 @renderer_classes([JSONRenderer] + api_settings.DEFAULT_RENDERER_CLASSES)
 def get_currency(request):
+
     """Get Currency Data.
 
     This method is responsible for passing request data to the reporting APIs.

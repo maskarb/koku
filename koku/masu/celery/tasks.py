@@ -15,6 +15,7 @@ from django.conf import settings
 from django.utils import timezone
 from tenant_schemas.utils import schema_context
 
+from api.currency.exchange.exchange import populate_exchange_rates
 from api.dataexport.models import DataExportRequest
 from api.dataexport.syncer import AwsS3Syncer
 from api.dataexport.syncer import SyncedFileInColdStorageError
@@ -355,3 +356,10 @@ def collect_queue_metrics(self):
             gauge.set(length)
     LOG.debug(f"Celery queue backlog info: {queue_len}")
     return queue_len
+
+
+@celery_app.task(name="masu.celery.tasks.get_exchange_rates", queue=DEFAULT)
+def get_exchange_rates():
+    """Get the current exchange rates for the supported currencies."""
+    LOG.info("About to query for the supported currencies")
+    populate_exchange_rates()

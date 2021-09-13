@@ -151,6 +151,12 @@ app.conf.beat_schedule["autovacuum-tune-schemas"] = {
     "args": [],
 }
 
+# Beat used to get the exchange rates for the supported currencies
+app.conf.beat_schedule["get_exchange_rates"] = {
+    "task": "masu.celery.tasks.get_exchange_rates",
+    "schedule": crontab(minute="*"),
+}
+
 # task to clean up sources with `pending_delete=t`
 app.conf.beat_schedule["delete_source_beat"] = {
     "task": "sources.tasks.delete_source_beat",
