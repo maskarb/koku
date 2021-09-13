@@ -31,6 +31,7 @@ class MasuTestCase(IamTestCase):
         self.ocp_on_azure_ocp_provider = Provider.objects.filter(
             infrastructure__infrastructure_type=Provider.PROVIDER_AZURE_LOCAL
         ).first()
+        self.ocp_on_prem_provider = Provider.objects.filter(infrastructure__infrastructure_type__isnull=True).first()
 
         self.aws_provider_uuid = str(self.aws_provider.uuid)
         self.ocp_provider_uuid = str(self.ocp_provider.uuid)
