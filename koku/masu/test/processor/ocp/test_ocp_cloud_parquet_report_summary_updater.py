@@ -13,6 +13,7 @@ from tenant_schemas.utils import schema_context
 
 from api.models import Provider
 from api.utils import DateHelper
+from masu.database.cost_model_db_accessor import CostModelDBAccessor
 from masu.database.ocp_report_db_accessor import OCPReportDBAccessor
 from masu.database.provider_db_accessor import ProviderDBAccessor
 from masu.processor.ocp.ocp_cloud_parquet_summary_updater import OCPCloudParquetReportSummaryUpdater
@@ -57,6 +58,9 @@ class OCPCloudParquetReportSummaryUpdaterTest(MasuTestCase):
             provider = provider_accessor.get_provider()
         with OCPReportDBAccessor(self.schema_name) as accessor:
             report_period = accessor.report_periods_for_provider_uuid(self.ocp_test_provider_uuid, start_date)
+        with CostModelDBAccessor(self.schema, self.ocp_test_provider_uuid) as accessor:
+            cost_model = accessor.cost_model
+            distribution = cost_model.distribution
         with schema_context(self.schema_name):
             current_ocp_report_period_id = report_period.id
 
@@ -65,7 +69,6 @@ class OCPCloudParquetReportSummaryUpdaterTest(MasuTestCase):
         updater.update_aws_summary_tables(
             self.ocp_test_provider_uuid, self.aws_test_provider_uuid, start_date, end_date
         )
-        distribution = None
         mock_ocp_on_aws.assert_called_with(
             start_date,
             end_date,
@@ -101,14 +104,16 @@ class OCPCloudParquetReportSummaryUpdaterTest(MasuTestCase):
             provider = provider_accessor.get_provider()
         with OCPReportDBAccessor(self.schema_name) as accessor:
             report_period = accessor.report_periods_for_provider_uuid(self.ocp_test_provider_uuid, start_date)
+        with CostModelDBAccessor(self.schema, self.ocp_test_provider_uuid) as accessor:
+            cost_model = accessor.cost_model
         with schema_context(self.schema_name):
             current_ocp_report_period_id = report_period.id
+            distribution = cost_model.distribution
         mock_map.return_value = {self.ocp_test_provider_uuid: (self.azure_provider_uuid, Provider.PROVIDER_AZURE)}
         updater = OCPCloudParquetReportSummaryUpdater(schema="acct10001", provider=provider, manifest=None)
         updater.update_azure_summary_tables(
             self.ocp_test_provider_uuid, self.azure_test_provider_uuid, start_date, end_date
         )
-        distribution = None
         mock_ocp_on_azure.assert_called_with(
             start_date,
             end_date,
@@ -146,14 +151,16 @@ class OCPCloudParquetReportSummaryUpdaterTest(MasuTestCase):
             provider = provider_accessor.get_provider()
         with OCPReportDBAccessor(self.schema_name) as accessor:
             report_period = accessor.report_periods_for_provider_uuid(self.ocp_test_provider_uuid, start_date)
+        with CostModelDBAccessor(self.schema, self.ocp_test_provider_uuid) as accessor:
+            cost_model = accessor.cost_model
         with schema_context(self.schema_name):
             current_ocp_report_period_id = report_period.id
+            distribution = cost_model.distribution
         mock_map.return_value = {self.ocp_test_provider_uuid: (self.azure_provider_uuid, Provider.PROVIDER_AZURE)}
         updater = OCPCloudParquetReportSummaryUpdater(schema="acct10001", provider=provider, manifest=None)
         updater.update_azure_summary_tables(
             self.ocp_test_provider_uuid, self.azure_test_provider_uuid, str(start_date), str(end_date)
         )
-        distribution = None
         mock_ocp_on_azure.assert_called_with(
             start_date,
             end_date,

@@ -84,44 +84,6 @@ class ReportProcessorTest(MasuTestCase):
         )
         self.assertIsNotNone(processor._processor)
 
-    @patch("masu.processor.aws.aws_report_processor.AWSReportProcessor.__init__", side_effect=MasuProcessingError)
-    def test_initializer_error(self, fake_processor):
-        """Test to initializer with error."""
-        with self.assertRaises(ReportProcessorError):
-            ReportProcessor(
-                schema_name=self.schema,
-                report_path="/my/report/file",
-                compression="GZIP",
-                provider=Provider.PROVIDER_AWS,
-                provider_uuid=self.aws_provider_uuid,
-                manifest_id=None,
-            )
-
-    @patch("masu.processor.aws.aws_report_processor.AWSReportProcessor.__init__", side_effect=NotImplementedError)
-    def test_initializer_not_implemented_error(self, fake_processor):
-        """Test to initializer with error."""
-        with self.assertRaises(NotImplementedError):
-            ReportProcessor(
-                schema_name=self.schema,
-                report_path="/my/report/file",
-                compression="GZIP",
-                provider=Provider.PROVIDER_AWS,
-                provider_uuid=self.aws_provider_uuid,
-                manifest_id=None,
-            )
-
-    def test_initializer_invalid_provider(self):
-        """Test to initializer with invalid provider."""
-        with self.assertRaises(ReportProcessorError):
-            ReportProcessor(
-                schema_name=self.schema,
-                report_path="/my/report/file",
-                compression="GZIP",
-                provider="unknown",
-                provider_uuid=self.aws_provider_uuid,
-                manifest_id=None,
-            )
-
     @patch("masu.processor.report_processor.ReportProcessor.trino_enabled", new_callable=PropertyMock)
     @patch("masu.processor.report_processor.ParquetReportProcessor.process", return_value=(1, 1))
     @patch("masu.processor.report_processor.OCPCloudParquetReportProcessor.process", return_value=2)
@@ -188,23 +150,6 @@ class ReportProcessorTest(MasuTestCase):
             processor.remove_processed_files("/my/report/file")
         except Exception:
             self.fail("unexpected error")
-
-    @patch(
-        "masu.processor.aws.aws_report_processor.AWSReportProcessor.remove_temp_cur_files",
-        side_effect=MasuProcessingError,
-    )
-    def test_aws_remove_processed_files_error(self, fake_process):
-        """Test to remove_processed_files for AWS with processing error."""
-        processor = ReportProcessor(
-            schema_name=self.schema,
-            report_path="/my/report/file",
-            compression="GZIP",
-            provider=Provider.PROVIDER_AWS,
-            provider_uuid=self.aws_provider_uuid,
-            manifest_id=None,
-        )
-        with self.assertRaises(ReportProcessorError):
-            processor.remove_processed_files("/my/report/file")
 
     @override_settings(ENABLE_PARQUET_PROCESSING=True)
     def test_set_processor_parquet(self):

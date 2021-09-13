@@ -6,6 +6,8 @@
 import datetime
 from unittest.mock import patch
 
+from tenant_schemas.utils import schema_context
+
 from api.utils import DateHelper
 from masu.database import OCP_REPORT_TABLE_MAP
 from masu.database.ocp_report_db_accessor import OCPReportDBAccessor
@@ -13,6 +15,7 @@ from masu.database.report_manifest_db_accessor import ReportManifestDBAccessor
 from masu.processor.ocp.ocp_report_parquet_summary_updater import OCPReportParquetSummaryUpdater
 from masu.test import MasuTestCase
 from masu.test.database.helpers import ReportObjectCreator
+from reporting.provider.ocp.models import OCPUsageReportPeriod
 from reporting_common.models import CostUsageReportManifest
 
 
@@ -84,6 +87,22 @@ class OCPReportSummaryUpdaterTest(MasuTestCase):
         end_date_str = end_date.strftime("%Y-%m-%d")
 
         self.updater.update_summary_tables(start_date_str, end_date_str)
+        mock_delete.assert_called_with(
+            self.ocp_provider.uuid, self.dh.this_month_start.date(), self.dh.this_month_end.date()
+        )
+        mock_sum.assert_called()
+        mock_tag_sum.assert_called()
+        mock_vol_tag_sum.assert_called()
+
+        with schema_context(self.schema):
+            rp = OCPUsageReportPeriod.objects.filter(
+                provider=self.ocp_provider, report_period_start=self.dh.this_month_start
+            ).first()
+            rp.summary_data_creation_datetime = self.dh.this_month_start
+            rp.save()
+        mock_delete.reset_mock()
+
+        self.updater.update_summary_tables(start_date_str, end_date_str)
         mock_delete.assert_called_with(self.ocp_provider.uuid, start_date.date(), end_date.date())
         mock_sum.assert_called()
         mock_tag_sum.assert_called()
@@ -94,6 +113,22 @@ class OCPReportSummaryUpdaterTest(MasuTestCase):
         end_date = start_date
         start_date_str = start_date.strftime("%Y-%m-%d")
         end_date_str = end_date.strftime("%Y-%m-%d")
+        expected = (
+            "INFO:masu.processor.ocp.ocp_report_parquet_summary_updater:"
+            "Overriding start and end date to process full month."
+        )
+
+        with self.assertLogs("masu.processor.ocp.ocp_report_parquet_summary_updater", level="INFO") as _logger:
+            self.updater.update_daily_tables(start_date_str, end_date_str)
+            self.assertIn(expected, _logger.output)
+
+        with schema_context(self.schema):
+            rp = OCPUsageReportPeriod.objects.filter(
+                provider=self.ocp_provider, report_period_start=self.dh.this_month_start
+            ).first()
+            rp.summary_data_creation_datetime = self.dh.this_month_start
+            rp.save()
+
         expected = (
             "INFO:masu.processor.ocp.ocp_report_parquet_summary_updater:"
             "NO-OP update_daily_tables for: %s-%s" % (start_date_str, end_date_str)

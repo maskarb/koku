@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 """Test the GCPReportDBAccessor utility object."""
-import decimal
 from unittest.mock import patch
 
 from dateutil import relativedelta
@@ -119,7 +118,7 @@ class GCPReportDBAccessorTest(MasuTestCase):
         query = self.accessor._get_db_obj_query(summary_table_name)
         with schema_context(self.schema):
             expected_markup = query.filter(cost_entry_bill__in=bill_ids).aggregate(
-                markup=Sum(F("unblended_cost") * decimal.Decimal(0.1))
+                markup=Sum(F("unblended_cost") * 0.1)
             )
             expected_markup = expected_markup.get("markup")
 
@@ -127,7 +126,7 @@ class GCPReportDBAccessorTest(MasuTestCase):
         with schema_context(self.schema):
             query = (
                 self.accessor._get_db_obj_query(summary_table_name)
-                .filter(cost_entry_bill__in=bill_ids)
+                .filter(cost_entry_bill__in=bill_ids, usage_start__gte=start_date, usage_start__lte=end_date)
                 .aggregate(Sum("markup_cost"))
             )
             actual_markup = query.get("markup_cost__sum")

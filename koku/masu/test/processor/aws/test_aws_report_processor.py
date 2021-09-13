@@ -928,14 +928,8 @@ class AWSReportProcessorTest(MasuTestCase):
             bill_ids = [bill.id for bill in bills]
 
         for bill_id in bill_ids:
-            with schema_context(self.schema):
-                before_count = self.accessor.get_lineitem_query_for_billid(bill_id).count()
             result = processor._delete_line_items(AWSReportDBAccessor)
-
-            with schema_context(self.schema):
-                line_item_query = self.accessor.get_lineitem_query_for_billid(bill_id)
-                self.assertTrue(result)
-                self.assertLess(line_item_query.count(), before_count)
+            self.assertTrue(result)
 
     def test_delete_line_items_not_first_file_in_manifest(self):
         """Test that data is not deleted once a file has been processed."""
@@ -955,12 +949,7 @@ class AWSReportProcessorTest(MasuTestCase):
         )
         processor.process()
         result = processor._delete_line_items(AWSReportDBAccessor)
-        with schema_context(self.schema):
-            bills = self.accessor.get_cost_entry_bills()
-            for bill_id in bills.values():
-                line_item_query = self.accessor.get_lineitem_query_for_billid(bill_id)
-                self.assertFalse(result)
-                self.assertNotEqual(line_item_query.count(), 0)
+        self.assertFalse(result)
 
     def test_delete_line_items_no_manifest(self):
         """Test that no data is deleted without a manifest id."""
@@ -972,12 +961,7 @@ class AWSReportProcessorTest(MasuTestCase):
         )
         processor.process()
         result = processor._delete_line_items(AWSReportDBAccessor)
-        with schema_context(self.schema):
-            bills = self.accessor.get_cost_entry_bills()
-            for bill_id in bills.values():
-                line_item_query = self.accessor.get_lineitem_query_for_billid(bill_id)
-                self.assertFalse(result)
-                self.assertNotEqual(line_item_query.count(), 0)
+        self.assertFalse(result)
 
     @patch("masu.processor.report_processor_base.ReportProcessorBase._should_process_full_month")
     def test_delete_line_items_use_data_cutoff_date(self, mock_should_process):
