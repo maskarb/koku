@@ -18,3 +18,20 @@ GCP_SERVICES = (
 )
 
 OCP_DATA_SOURCES = ("Pod", "Storage")
+# Node tuple ex ((node name, resource id, cpu, memory, volume tuple))
+OCP_NODES = (
+    ("node_1", "i-00000001", 4, 16),
+    ("node_2", "i-00000002", 8, 32),
+    ("node_3", "i-00000003", 8, 32),
+    ("node_4", "i-00000004", 4, 16),
+    ("node_5", "i-00000005", 8, 32),
+    ("node_6", "i-00000006", 8, 32),
+)
+OCP_PVCS = (
+    ("pvc_1", "volume_1", "bronze", 512),
+    ("pvc_2", "volume_2", "silver", 128),
+    ("pvc_3", "volume_3", "gold", 256),
+    ("pvc_4", "volume_4", "platinum", 1024),
+    ("pvc_5", "volume_5", "adamantium", 512),
+    ("pvc_6", "volume_6", "vibranium", 1024),
+)
