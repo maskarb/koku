@@ -1011,6 +1011,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                     node=node,
                     data_source="Pod",
                     namespace__isnull=True,
+                    infrastructure_raw_cost=None,
+                    infrastructure_project_raw_cost=None,
                 ).first()
                 if not line_item:
                     line_item = OCPUsageLineItemDailySummary(
@@ -1023,6 +1025,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                         monthly_cost_type="Node",
                         node=node,
                         data_source="Pod",
+                        infrastructure_raw_cost=None,
+                        infrastructure_project_raw_cost=None,
                     )
                 monthly_cost = self.generate_monthly_cost_json_object(distribution, node_cost)
                 if rate_type == metric_constants.INFRASTRUCTURE_COST_TYPE:
@@ -1047,6 +1051,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                         node=project_node,
                         namespace=namespace,
                         data_source="Pod",
+                        infrastructure_raw_cost=None,
+                        infrastructure_project_raw_cost=None,
                     ).first()
                     if not project_line_item:
                         project_line_item = OCPUsageLineItemDailySummary(
@@ -1060,6 +1066,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                             node=project_node,
                             namespace=namespace,
                             data_source="Pod",
+                            infrastructure_raw_cost=None,
+                            infrastructure_project_raw_cost=None,
                         )
                     monthly_cost = self.generate_monthly_cost_json_object(distribution, distributed_cost)
                     log_statement = (
@@ -1114,6 +1122,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                                     monthly_cost_type="Node",
                                     node=node,
                                     data_source="Pod",
+                                    infrastructure_raw_cost=None,
+                                    infrastructure_project_raw_cost=None,
                                 ).first()
                                 if not line_item:
                                     line_item = OCPUsageLineItemDailySummary(
@@ -1126,6 +1136,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                                         monthly_cost_type="Node",
                                         node=node,
                                         data_source="Pod",
+                                        infrastructure_raw_cost=None,
+                                        infrastructure_project_raw_cost=None,
                                     )
                                 node_cost = rate_value
                                 if rate_type == metric_constants.INFRASTRUCTURE_COST_TYPE:
@@ -1192,6 +1204,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                                 monthly_cost_type="Node",
                                 node=node,
                                 data_source="Pod",
+                                infrastructure_raw_cost=None,
+                                infrastructure_project_raw_cost=None,
                             ).first()
                             if not line_item:
                                 line_item = OCPUsageLineItemDailySummary(
@@ -1204,6 +1218,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                                     monthly_cost_type="Node",
                                     node=node,
                                     data_source="Pod",
+                                    infrastructure_raw_cost=None,
+                                    infrastructure_project_raw_cost=None,
                                 )
                             node_cost = tag_default
                             if rate_type == metric_constants.INFRASTRUCTURE_COST_TYPE:
@@ -1278,6 +1294,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                                 node=node,
                                 data_source="Storage",
                                 namespace=namespace,
+                                infrastructure_raw_cost=None,
+                                infrastructure_project_raw_cost=None,
                             ).first()
                             if not line_item:
                                 line_item = OCPUsageLineItemDailySummary(
@@ -1292,6 +1310,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                                     node=node,
                                     data_source="Storage",
                                     namespace=namespace,
+                                    infrastructure_raw_cost=None,
+                                    infrastructure_project_raw_cost=None,
                                 )
                             pvc_cost = tag_default
                             if rate_type == metric_constants.INFRASTRUCTURE_COST_TYPE:
@@ -1383,7 +1403,7 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                     usage_start__gte=start_date, usage_start__lt=end_date, cluster_id=cluster_id
                 )
                 .filter(namespace__isnull=False)
-                .values("namespace")
+                .values("node", "namespace")
                 .annotate(distributed_cost=Sum(usage_column) / cluster_hours * cluster_cost)
             )
         return distributed_project_list
@@ -1427,6 +1447,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                         node=node,
                         data_source="Pod",
                         namespace__isnull=True,
+                        infrastructure_raw_cost=None,
+                        infrastructure_project_raw_cost=None,
                     ).first()
                     if not line_item:
                         line_item = OCPUsageLineItemDailySummary(
@@ -1439,6 +1461,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                             monthly_cost_type="Cluster",
                             node=node,
                             data_source="Pod",
+                            infrastructure_raw_cost=None,
+                            infrastructure_project_raw_cost=None,
                         )
                     monthly_cost = self.generate_monthly_cost_json_object(distribution, distributed_cost)
                     log_statement = (
@@ -1460,6 +1484,7 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
             with schema_context(self.schema):
                 for project_dikt in project_distribution_list:
                     namespace = project_dikt.get("namespace")
+                    node = project_dikt.get("node")
                     distributed_cost = project_dikt.get("distributed_cost", Decimal(0))
                     project_line_item = OCPUsageLineItemDailySummary.objects.filter(
                         usage_start=start_date,
@@ -1469,7 +1494,10 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                         cluster_alias=cluster_alias,
                         monthly_cost_type="Cluster",
                         namespace=namespace,
+                        node=node,
                         data_source="Pod",
+                        infrastructure_raw_cost=None,
+                        infrastructure_project_raw_cost=None,
                     ).first()
                     if not project_line_item:
                         project_line_item = OCPUsageLineItemDailySummary(
@@ -1481,7 +1509,10 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                             cluster_alias=cluster_alias,
                             monthly_cost_type="Cluster",
                             namespace=namespace,
+                            node=node,
                             data_source="Pod",
+                            infrastructure_raw_cost=None,
+                            infrastructure_project_raw_cost=None,
                         )
                     monthly_cost = self.generate_monthly_cost_json_object(distribution, distributed_cost)
                     log_statement = (
@@ -1539,6 +1570,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                                     node=node,
                                     data_source="Storage",
                                     namespace=namespace,
+                                    infrastructure_raw_cost=None,
+                                    infrastructure_project_raw_cost=None,
                                 ).first()
                                 if not line_item:
                                     line_item = OCPUsageLineItemDailySummary(
@@ -1553,6 +1586,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                                         node=node,
                                         data_source="Storage",
                                         namespace=namespace,
+                                        infrastructure_raw_cost=None,
+                                        infrastructure_project_raw_cost=None,
                                     )
                                 pvc_cost = rate_value
                                 if rate_type == metric_constants.INFRASTRUCTURE_COST_TYPE:
@@ -1593,6 +1628,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                     namespace=namespace,
                     infrastructure_project_monthly_cost__isnull=True,
                     supplementary_project_monthly_cost__isnull=True,
+                    infrastructure_raw_cost=None,
+                    infrastructure_project_raw_cost=None,
                 ).first()
                 if not line_item:
                     line_item = OCPUsageLineItemDailySummary(
@@ -1607,6 +1644,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                         node=node,
                         data_source="Storage",
                         namespace=namespace,
+                        infrastructure_raw_cost=None,
+                        infrastructure_project_raw_cost=None,
                     )
                 monthly_cost = self.generate_monthly_cost_json_object(metric_constants.PVC_DISTRIBUTION, pvc_cost)
                 if rate_type == metric_constants.INFRASTRUCTURE_COST_TYPE:
@@ -1630,6 +1669,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                     data_source="Storage",
                     infrastructure_monthly_cost_json__isnull=True,
                     supplementary_monthly_cost_json__isnull=True,
+                    infrastructure_raw_cost=None,
+                    infrastructure_project_raw_cost=None,
                 ).first()
                 if not project_line_item:
                     project_line_item = OCPUsageLineItemDailySummary(
@@ -1644,6 +1685,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                         node=node,
                         namespace=namespace,
                         data_source="Storage",
+                        infrastructure_raw_cost=None,
+                        infrastructure_project_raw_cost=None,
                     )
                 monthly_cost = self.generate_monthly_cost_json_object(metric_constants.PVC_DISTRIBUTION, pvc_cost)
                 if rate_type == metric_constants.INFRASTRUCTURE_COST_TYPE:
@@ -1689,6 +1732,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                                     cluster_alias=cluster_alias,
                                     monthly_cost_type="Cluster",
                                     data_source="Pod",
+                                    infrastructure_raw_cost=None,
+                                    infrastructure_project_raw_cost=None,
                                 ).first()
                                 if not line_item:
                                     line_item = OCPUsageLineItemDailySummary(
@@ -1700,6 +1745,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                                         cluster_alias=cluster_alias,
                                         monthly_cost_type="Cluster",
                                         data_source="Pod",
+                                        infrastructure_raw_cost=None,
+                                        infrastructure_project_raw_cost=None,
                                     )
                                 cluster_cost = rate_value
                                 if rate_type == metric_constants.INFRASTRUCTURE_COST_TYPE:
@@ -1771,6 +1818,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                             cluster_alias=cluster_alias,
                             monthly_cost_type="Cluster",
                             data_source="Pod",
+                            infrastructure_raw_cost=None,
+                            infrastructure_project_raw_cost=None,
                         ).first()
                         if not line_item:
                             line_item = OCPUsageLineItemDailySummary(
@@ -1782,6 +1831,8 @@ class OCPReportDBAccessor(ReportDBAccessorBase):
                                 cluster_alias=cluster_alias,
                                 monthly_cost_type="Cluster",
                                 data_source="Pod",
+                                infrastructure_raw_cost=None,
+                                infrastructure_project_raw_cost=None,
                             )
                         cluster_cost = tag_default
                         if rate_type == metric_constants.INFRASTRUCTURE_COST_TYPE:
