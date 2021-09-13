@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 """Test utilities."""
+import json
+import pkgutil
 import random
 from datetime import timedelta
 from functools import partial
@@ -20,6 +22,7 @@ from masu.database.azure_report_db_accessor import AzureReportDBAccessor
 from masu.database.gcp_report_db_accessor import GCPReportDBAccessor
 from masu.database.ocp_report_db_accessor import OCPReportDBAccessor
 from masu.processor.tasks import refresh_materialized_views
+from masu.processor.tasks import update_cost_model_costs
 
 
 class ModelBakeryDataLoader(DataLoader):
@@ -41,17 +44,26 @@ class ModelBakeryDataLoader(DataLoader):
         if provider_type == Provider.PROVIDER_OCP:
             return "OCPUsageReportPeriod"
 
-    def create_provider(self, provider_type, credentials, billing_source):
+    def create_provider(self, provider_type, credentials, billing_source, name, linked_openshift_provider=None):
         """Create a Provider record"""
         with override_settings(AUTO_DATA_INGEST=False):
             # ocp_billing_source, _ = ProviderBillingSource.objects.get_or_create(data_source={})
-            return baker.make(
+            provider = baker.make(
                 "Provider",
                 type=provider_type,
+                name=name,
                 authentication__credentials=credentials,
                 billing_source__data_source=billing_source,
                 customer=self.customer,
             )
+
+            if linked_openshift_provider:
+                infra_map = baker.make(
+                    "ProviderInfrastructureMap", infrastructure_type=provider_type, infrastructure_provider=provider
+                )
+                linked_openshift_provider.infrastructure = infra_map
+                linked_openshift_provider.save()
+            return provider
 
     def create_manifest(self, provider, bill_date, num_files=1):
         """Create a manifest for the provider."""
@@ -67,31 +79,73 @@ class ModelBakeryDataLoader(DataLoader):
 
         return manifest
 
-    def create_bill(self, provider_type, provider, bill_date):
+    def create_bill(self, provider_type, provider, bill_date, **kwargs):
         """Create a bill object for the provider"""
         with schema_context(self.schema):
             model_str = self._get_bill_model(provider_type)
+            month_end = self.dh.month_end(bill_date)
             if provider_type == Provider.PROVIDER_OCP:
-                return baker.make(model_str, provider=provider, report_period_start=bill_date, _fill_optional=True)
+                month_end = month_end + timedelta(days=1)
+                return baker.make(
+                    model_str,
+                    provider=provider,
+                    report_period_start=bill_date,
+                    report_period_end=month_end,
+                    _fill_optional=False,
+                    **kwargs
+                )
             else:
-                return baker.make(model_str, provider=provider, billing_period_start=bill_date, _fill_optional=True)
+                return baker.make(
+                    model_str,
+                    provider=provider,
+                    billing_period_start=bill_date,
+                    billing_period_end=month_end,
+                    _fill_optional=False,
+                    **kwargs
+                )
 
-    def load_aws_data(self):
+    def create_cost_model(self, provider):
+        """Create a cost model and map entry."""
+        cost_model_json = json.loads(
+            pkgutil.get_data("api.report.test", "openshift_on_prem_cost_model.json").decode("utf8")
+        )
+        with schema_context(self.schema):
+            cost_model = baker.make(
+                "CostModel",
+                name=cost_model_json.get("name"),
+                description=cost_model_json.get("description"),
+                rates=cost_model_json.get("rates"),
+                distribution=cost_model_json.get("distribution"),
+                source_type=provider.type,
+                _fill_optional=True,
+            )
+
+            baker.make("CostModelMap", provider_uuid=provider.uuid, cost_model=cost_model)
+
+    def load_aws_data(self, linked_openshift_provider=None):
         """Load AWS data for tests."""
         bills = []
         provider_type = Provider.PROVIDER_AWS_LOCAL
         role_arn = "arn:aws:iam::999999999999:role/CostManagement"
         credentials = {"role_arn": role_arn}
         billing_source = {"bucket": "test-bucket"}
+        payer_account_id = "123456789"
+        create_supplemental_info = True
 
-        provider = self.create_provider(provider_type, credentials, billing_source)
+        provider = self.create_provider(
+            provider_type, credentials, billing_source, "test-aws", linked_openshift_provider=linked_openshift_provider
+        )
         for start_date, end_date, bill_date in self.dates:
             self.create_manifest(provider, bill_date)
-            bill = self.create_bill(provider_type, provider, bill_date)
+            bill = self.create_bill(provider_type, provider, bill_date, payer_account_id=payer_account_id)
             bills.append(bill)
             with schema_context(self.schema):
-                alias = baker.make("AWSAccountAlias", account_id=bill.payer_account_id, account_alias="Test Account")
-                org_unit = baker.make("AWSOrganizationalUnit", account_alias=alias, provider=provider)
+                if create_supplemental_info:
+                    alias = baker.make(
+                        "AWSAccountAlias", account_id=bill.payer_account_id, account_alias="Test Account"
+                    )
+                    org_unit = baker.make("AWSOrganizationalUnit", account_alias=alias, provider=provider)
+                    create_supplemental_info = False
                 days = (end_date - start_date).days
                 for i in range(days):
                     baker.make(
@@ -111,9 +165,9 @@ class ModelBakeryDataLoader(DataLoader):
             AWSReportDBAccessor(self.schema).populate_tags_summary_table([bill.id], start_date, end_date)
         refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
 
-        return bills
+        return provider, bills
 
-    def load_azure_data(self):
+    def load_azure_data(self, linked_openshift_provider=None):
         """Load Azure data for tests."""
         bills = []
         provider_type = Provider.PROVIDER_AZURE_LOCAL
@@ -125,7 +179,13 @@ class ModelBakeryDataLoader(DataLoader):
         }
         billing_source = {"resource_group": "resourcegroup1", "storage_account": "storageaccount1"}
 
-        provider = self.create_provider(provider_type, credentials, billing_source)
+        provider = self.create_provider(
+            provider_type,
+            credentials,
+            billing_source,
+            "test-azure",
+            linked_openshift_provider=linked_openshift_provider,
+        )
         for start_date, end_date, bill_date in self.dates:
             self.create_manifest(provider, bill_date)
             bill = self.create_bill(provider_type, provider, bill_date)
@@ -149,16 +209,18 @@ class ModelBakeryDataLoader(DataLoader):
                     )
             AzureReportDBAccessor(self.schema).populate_tags_summary_table([bill.id], start_date, end_date)
         refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
-        return bills
+        return provider, bills
 
-    def load_gcp_data(self):
+    def load_gcp_data(self, linked_openshift_provider=None):
         """Load Azure data for tests."""
         bills = []
         provider_type = Provider.PROVIDER_GCP_LOCAL
         credentials = {"project_id": "test_project_id"}
         billing_source = {"table_id": "test_table_id", "dataset": "test_dataset"}
         account_id = "123456789"
-        provider = self.create_provider(provider_type, credentials, billing_source)
+        provider = self.create_provider(
+            provider_type, credentials, billing_source, "test-gcp", linked_openshift_provider=linked_openshift_provider
+        )
         projects = [(self.faker.slug(), self.faker.slug()) for _ in range(10)]
         for start_date, end_date, bill_date in self.dates:
             self.create_manifest(provider, bill_date)
@@ -185,39 +247,109 @@ class ModelBakeryDataLoader(DataLoader):
                     )
             GCPReportDBAccessor(self.schema).populate_tags_summary_table([bill.id], start_date, end_date)
         refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
-        return bills
+        return provider, bills
 
-    def load_openshift_data(self, cluster_id):
+    def load_openshift_data(self, cluster_id, on_cloud=False):
         """Load OpenShift data for tests."""
         report_periods = []
         provider_type = Provider.PROVIDER_OCP
         credentials = {"cluster_id": cluster_id}
         billing_source = {}
 
-        provider = self.create_provider(provider_type, credentials, billing_source)
+        provider = self.create_provider(provider_type, credentials, billing_source, cluster_id)
+        if not on_cloud:
+            self.create_cost_model(provider)
+        namespaces = {node[0]: self.faker.slug() for node in constants.OCP_NODES}
+        volumes = {node[0]: constants.OCP_PVCS[i] for i, node in enumerate(constants.OCP_NODES)}
+        cluster_cpu_capacity = sum([node_tuple[2] for node_tuple in constants.OCP_NODES])
+        cluster_memory_capacity = sum([node_tuple[3] for node_tuple in constants.OCP_NODES])
         for start_date, end_date, bill_date in self.dates:
             self.create_manifest(provider, bill_date)
-            report_period = self.create_bill(provider_type, provider, bill_date)
+            report_period = self.create_bill(
+                provider_type, provider, bill_date, cluster_id=cluster_id, cluster_alias=cluster_id
+            )
             report_periods.append(report_period)
             with schema_context(self.schema):
                 days = (end_date - start_date).days
                 for i in range(days):
-                    baker.make(
-                        "OCPUsageLineItemDailySummary",
-                        report_period=report_period,
-                        cluster_id=cluster_id,
-                        cluster_alias=cluster_id,
-                        data_source=random.choice(constants.OCP_DATA_SOURCES),
-                        usage_start=start_date + timedelta(i),
-                        usage_end=start_date + timedelta(i),
-                        pod_labels=random.choice(self.tags),
-                        volume_labels=random.choice(self.tags),
-                        source_uuid=provider.uuid,
-                        _fill_optional=True,
-                    )
+                    for node_tuple in constants.OCP_NODES:
+                        namespace = namespaces.get(node_tuple[0])
+                        pvc_tuple = volumes.get(node_tuple[0])
+                        for data_source in constants.OCP_DATA_SOURCES:
+                            persistent_volume_claim = pvc_tuple[0] if data_source == "Storage" else None
+                            persistent_volume = pvc_tuple[1] if data_source == "Storage" else None
+                            storage_class = pvc_tuple[2] if data_source == "Storage" else None
+                            volume_capcity = pvc_tuple[3]
+                            infra_raw_cost = random.random() * 100 if on_cloud else None
+                            project_infra_raw_cost = infra_raw_cost * random.random() if on_cloud else None
+                            pod_limit_cpu = random.randint(1, node_tuple[2])
+                            pod_limit_memory = random.randint(1, node_tuple[3])
+                            baker.make(
+                                "OCPUsageLineItemDailySummary",
+                                report_period=report_period,
+                                cluster_id=cluster_id,
+                                cluster_alias=cluster_id + " Alias",
+                                node=node_tuple[0],
+                                resource_id=node_tuple[1],
+                                namespace=namespace,
+                                data_source=data_source,
+                                persistentvolumeclaim=persistent_volume_claim,
+                                persistentvolume=persistent_volume,
+                                storageclass=storage_class,
+                                usage_start=start_date + timedelta(i),
+                                usage_end=start_date + timedelta(i),
+                                pod_labels=random.choice(self.tags) if data_source == "Pod" else None,
+                                volume_labels=random.choice(self.tags) if data_source == "Storage" else None,
+                                source_uuid=provider.uuid,
+                                pod_limit_cpu_core_hours=pod_limit_cpu if data_source == "Pod" else None,
+                                pod_usage_cpu_core_hours=pod_limit_cpu * random.random()
+                                if data_source == "Pod"
+                                else None,
+                                pod_request_cpu_core_hours=pod_limit_cpu * random.random()
+                                if data_source == "Pod"
+                                else None,
+                                pod_limit_memory_gigabyte_hours=pod_limit_memory if data_source == "Pod" else None,
+                                pod_usage_memory_gigabyte_hours=pod_limit_memory * random.random()
+                                if data_source == "Pod"
+                                else None,
+                                pod_request_memory_gigabyte_hours=pod_limit_memory * random.random()
+                                if data_source == "Pod"
+                                else None,
+                                persistentvolumeclaim_capacity_gigabyte=volume_capcity
+                                if data_source == "Storage"
+                                else None,
+                                persistentvolumeclaim_capacity_gigabyte_months=volume_capcity * 30
+                                if data_source == "Storage"
+                                else None,
+                                volume_request_storage_gigabyte_months=volume_capcity * 30 * random.random()
+                                if data_source == "Storage"
+                                else None,
+                                persistentvolumeclaim_usage_gigabyte_months=volume_capcity * 30 * random.random()
+                                if data_source == "Storage"
+                                else None,
+                                node_capacity_cpu_cores=node_tuple[2],
+                                node_capacity_cpu_core_hours=node_tuple[2] * 24,
+                                node_capacity_memory_gigabytes=node_tuple[3],
+                                node_capacity_memory_gigabyte_hours=node_tuple[3] * 24,
+                                cluster_capacity_cpu_core_hours=cluster_cpu_capacity * 24,
+                                cluster_capacity_memory_gigabyte_hours=cluster_memory_capacity * 24,
+                                infrastructure_raw_cost=infra_raw_cost,
+                                infrastructure_project_raw_cost=project_infra_raw_cost,
+                                infrastructure_usage_cost=None,
+                                infrastructure_monthly_cost_json=None,
+                                supplementary_usage_cost=None,
+                                supplementary_monthly_cost_json=None,
+                                infrastructure_project_monthly_cost=None,
+                                supplementary_project_monthly_cost=None,
+                                monthly_cost_type=None,
+                                _fill_optional=True,
+                            )
             OCPReportDBAccessor(self.schema).populate_pod_label_summary_table([report_period.id], start_date, end_date)
+            update_cost_model_costs.s(
+                self.schema, provider.uuid, start_date, end_date, tracing_id="12345", synchronous=True
+            ).apply()
         refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
-        return report_periods
+        return provider, report_periods
 
     def load_openshift_on_cloud_data(self, provider_type, cluster_id, bills, report_periods):
         """Load OCP on AWS Daily Summary table."""
