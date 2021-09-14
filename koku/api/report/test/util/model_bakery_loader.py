@@ -31,7 +31,9 @@ class ModelBakeryDataLoader(DataLoader):
     def __init__(self, schema, customer, num_days=10):
         super().__init__(schema, customer, num_days=num_days)
         self.faker = Faker()
-        self.tags = [{self.faker.slug(): self.faker.slug()} for _ in range(10)]
+        self.tag_keys = [self.faker.slug() for _ in range(10)]
+        self.tags = [{key: self.faker.slug()} for key in self.tag_keys]
+        self._populate_enabled_tag_key_table()
 
     def _get_bill_model(self, provider_type):
         """Return the correct model for a provider type."""
@@ -43,6 +45,13 @@ class ModelBakeryDataLoader(DataLoader):
             return "GCPCostEntryBill"
         if provider_type == Provider.PROVIDER_OCP:
             return "OCPUsageReportPeriod"
+
+    def _populate_enabled_tag_key_table(self):
+        """Insert records for our tag keys."""
+        for table_name in ("AWSEnabledTagKeys", "AzureEnabledTagKeys", "GCPEnabledTagKeys", "OCPEnabledTagKeys"):
+            with schema_context(self.schema):
+                for key in self.tag_keys:
+                    baker.make(table_name, key=key)
 
     def create_provider(self, provider_type, credentials, billing_source, name, linked_openshift_provider=None):
         """Create a Provider record"""
