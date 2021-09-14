@@ -33,7 +33,7 @@ def create_currency_codes():
 
 def populate_exchange_rates():
     """Grab the exchange rates from external api"""
-    print("\n\n\n\nASHLEY LOOK HERE!")
+    print("\n\n\n\nAaron look here")
     print(CurrencyCodes.SUPPORTED_CURRENCIES)
     create_currency_codes()
     for currency in CurrencyCodes.SUPPORTED_CURRENCIES:
