@@ -26,6 +26,7 @@ from . import database
 from . import sentry
 from .configurator import CONFIGURATOR
 from .env import ENVIRONMENT
+from koku import configurator
 
 
 # Database
@@ -428,6 +429,8 @@ ENABLE_TRINO_SOURCE_TYPE = ENVIRONMENT.list("ENABLE_TRINO_SOURCE_TYPE", default=
 PRESTO_HOST = ENVIRONMENT.get_value("PRESTO_HOST", default=None)
 PRESTO_PORT = ENVIRONMENT.get_value("PRESTO_PORT", default=None)
 TRINO_DATE_STEP = ENVIRONMENT.int("TRINO_DATE_STEP", default=5)
+TRINO_HOST = CONFIGURATOR.get_endpoint_host("trino", "coordinator", "trino")
+TRINO_PORT = CONFIGURATOR.get_endpoint_port("trino", "coordinator", "8000")
 
 # IBM Settings
 IBM_SERVICE_URL = ENVIRONMENT.get_value("IBM_SERVICE_URL", default="https://enterprise.cloud.ibm.com")
