@@ -22,6 +22,9 @@ objects:
       name: ${DATABASE_NAME}
       version: ${{DATABASE_VERSION}}
 
+    dependencies:
+    - trino
+
     # Request kafka topics for your application here
     kafkaTopics:
     - topicName: platform.sources.event-stream
