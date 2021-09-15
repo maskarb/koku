@@ -11,6 +11,8 @@ objects:
     database:
       name: ${DATABASE_NAME}
       version: ${{DATABASE_VERSION}}
+    dependencies:
+    - trino
     deployments:
     - minReplicas: ${{KOKU_MIN_REPLICAS}}
       name: clowder-api
