@@ -277,6 +277,13 @@ def clean_volume():
     LOG.info("The following files were deleted: %s", deleted_files)
 
 
+@celery_app.task(name="masu.celery.tasks.do_nothing", queue=DEFAULT)
+def do_nothing():
+    nothing = "I am doing nothing"
+    LOG.info("i am doing thing")
+    return nothing
+
+
 @celery_app.task(name="masu.celery.tasks.crawl_account_hierarchy", queue=DEFAULT)
 def crawl_account_hierarchy(provider_uuid=None):
     """Crawl top level accounts to discover hierarchy."""
