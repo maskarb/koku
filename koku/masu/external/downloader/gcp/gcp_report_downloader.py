@@ -149,11 +149,20 @@ class GCPReportDownloader(ReportDownloaderBase, DownloaderInterface):
         self.scan_start, self.scan_end = self._generate_default_scan_range()
         try:
             GCPProvider().cost_usage_source_is_reachable(self.credentials, self.data_source)
-            self.etag = self._generate_etag()
         except ValidationError as ex:
             msg = f"GCP source ({self._provider_uuid}) for {customer_name} is not reachable. Error: {str(ex)}"
             LOG.error(log_json(self.tracing_id, msg, self.context))
             raise GCPReportDownloaderError(str(ex))
+        try:
+            self._generate_etag()
+        except GoogleCloudError as err:
+            err_msg = (
+                "Could not obtain last modified date for BigQuery table."
+                f"\n  Provider: {self._provider_uuid}"
+                f"\n  Customer: {self.customer_name}"
+                f"\n  Response: {err.message}"
+            )
+            raise ReportDownloaderWarning(err_msg)
 
     def _get_dataset_name(self):
         """Helper to get dataset ID when format is project:datasetName."""
@@ -176,22 +185,11 @@ class GCPReportDownloader(ReportDownloaderBase, DownloaderInterface):
         To generate the etag, we use BigQuery to collect the last modified
         date to the table and md5 hash it.
         """
-
-        try:
-            client = bigquery.Client()
-            billing_table_obj = client.get_table(self.table_name)
-            last_modified = billing_table_obj.modified
-            modified_hash = hashlib.md5(str(last_modified).encode())
-            modified_hash = modified_hash.hexdigest()
-        except GoogleCloudError as err:
-            err_msg = (
-                "Could not obtain last modified date for BigQuery table."
-                f"\n  Provider: {self._provider_uuid}"
-                f"\n  Customer: {self.customer_name}"
-                f"\n  Response: {err.message}"
-            )
-            raise ReportDownloaderWarning(err_msg)
-        return modified_hash
+        client = bigquery.Client()
+        billing_table_obj = client.get_table(self.table_name)
+        last_modified = billing_table_obj.modified
+        modified_hash = hashlib.md5(str(last_modified).encode())
+        self.etag = modified_hash.hexdigest()
 
     def get_manifest_context_for_date(self, date):
         """

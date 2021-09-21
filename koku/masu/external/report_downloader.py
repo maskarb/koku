@@ -27,6 +27,10 @@ from reporting_common.models import CostUsageReportStatus
 LOG = logging.getLogger(__name__)
 
 
+class ReportNotFoundError(Exception):
+    """Report not found error."""
+
+
 class ReportDownloaderError(Exception):
     """Report Downloader error."""
 
@@ -64,10 +68,7 @@ class ReportDownloader:
             "account": self.account,
         }
 
-        try:
-            self._downloader = self._set_downloader()
-        except Exception as err:
-            raise ReportDownloaderError(str(err))
+        self._downloader = self._set_downloader()
 
         if not self._downloader:
             raise ReportDownloaderError("Invalid provider type specified.")

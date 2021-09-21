@@ -27,10 +27,14 @@ from masu.database.cost_model_db_accessor import CostModelDBAccessor
 from masu.database.provider_db_accessor import ProviderDBAccessor
 from masu.database.report_manifest_db_accessor import ReportManifestDBAccessor
 from masu.database.report_stats_db_accessor import ReportStatsDBAccessor
+from masu.exceptions import MasuProcessingError
+from masu.exceptions import MasuProviderError
 from masu.external.accounts_accessor import AccountsAccessor
 from masu.external.accounts_accessor import AccountsAccessorError
 from masu.external.date_accessor import DateAccessor
 from masu.external.downloader.report_downloader_base import ReportDownloaderWarning
+from masu.external.report_downloader import ReportDownloaderError
+from masu.external.report_downloader import ReportNotFoundError
 from masu.processor import enable_trino_processing
 from masu.processor._tasks.download import _get_report_files
 from masu.processor._tasks.process import _process_report_file
@@ -122,9 +126,8 @@ def record_report_status(manifest_id, file_name, tracing_id, context={}):
     return already_processed
 
 
-# pylint: disable=too-many-locals
 @celery_app.task(name="masu.processor.tasks.get_report_files", queue=GET_REPORT_FILES_QUEUE, bind=True)
-def get_report_files(
+def get_report_files(  # noqa: C901
     self,
     customer_name,
     authentication,
@@ -165,17 +168,24 @@ def get_report_files(
         tracing_id = report_context.get("assembly_id", "no-tracing-id")
         WorkerCache().add_task_to_cache(cache_key)
 
-        report_dict = _get_report_files(
-            tracing_id,
-            customer_name,
-            authentication,
-            billing_source,
-            provider_type,
-            provider_uuid,
-            month,
-            cache_key,
-            report_context,
-        )
+        context = {"account": customer_name[4:], "provider_uuid": provider_uuid}
+        try:
+            report_dict = _get_report_files(
+                tracing_id,
+                customer_name,
+                authentication,
+                billing_source,
+                provider_type,
+                provider_uuid,
+                month,
+                cache_key,
+                report_context,
+            )
+        except (MasuProcessingError, MasuProviderError, ReportDownloaderError, ReportNotFoundError) as err:
+            worker_stats.REPORT_FILE_DOWNLOAD_ERROR_COUNTER.labels(provider_type=provider_type).inc()
+            WorkerCache().remove_task_from_cache(cache_key)
+            LOG.error(log_json(tracing_id, str(err), context))
+            raise err
 
         stmt = (
             f"Reports to be processed: "

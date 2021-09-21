@@ -17,14 +17,18 @@ from api.common import log_json
 from api.provider.models import Provider
 from masu.config import Config
 from masu.database.report_manifest_db_accessor import ReportManifestDBAccessor
-from masu.exceptions import MasuProviderError
 from masu.external.downloader.downloader_interface import DownloaderInterface
 from masu.external.downloader.report_downloader_base import ReportDownloaderBase
+from masu.external.report_downloader import ReportNotFoundError
 from masu.util.aws import common as utils
 from masu.util.common import get_path_prefix
 
 DATA_DIR = Config.TMP_DIR
 LOG = logging.getLogger(__name__)
+
+
+class AWSReportNotFoundError(ReportNotFoundError):
+    """AWS Report Not Found Error."""
 
 
 class AWSReportDownloaderError(Exception):
@@ -99,7 +103,7 @@ class AWSReportDownloader(ReportDownloaderBase, DownloaderInterface):
         report = [rep for rep in report_defs if rep["ReportName"] == self.report_name]
 
         if not report:
-            raise MasuProviderError("Cost and Usage Report definition not found.")
+            raise AWSReportNotFoundError("Cost and Usage Report definition not found.")
 
         self.report = report.pop()
         self.s3_client = session.client("s3")

@@ -11,6 +11,7 @@ from azure.common import AzureException
 from azure.core.exceptions import HttpResponseError
 from msrest.exceptions import ClientException
 
+from masu.external.report_downloader import ReportNotFoundError
 from providers.azure.client import AzureClientFactory
 
 LOG = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ class AzureServiceError(Exception):
     pass
 
 
-class AzureCostReportNotFound(Exception):
+class AzureCostReportNotFound(ReportNotFoundError):
     """Raised when Azure cost report is not found."""
 
     pass
