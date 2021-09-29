@@ -9,6 +9,8 @@ from api.tags.azure.openshift.queries import OCPAzureTagQueryHandler
 from api.tags.serializers import OCPAzureTagsQueryParamSerializer
 from api.tags.view import TagView
 from reporting.provider.azure.models import AzureTagsSummary
+from reporting.provider.ocp.models import OCPStorageVolumeLabelSummary
+from reporting.provider.ocp.models import OCPUsagePodLabelSummary
 
 
 class OCPAzureTagView(TagView):
@@ -17,5 +19,5 @@ class OCPAzureTagView(TagView):
     provider = "ocp_azure"
     serializer = OCPAzureTagsQueryParamSerializer
     query_handler = OCPAzureTagQueryHandler
-    tag_handler = [AzureTagsSummary]
+    tag_handler = [AzureTagsSummary, OCPUsagePodLabelSummary, OCPStorageVolumeLabelSummary]
     permission_classes = [AzureAccessPermission & OpenShiftAccessPermission]

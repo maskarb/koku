@@ -9,6 +9,8 @@ from api.tags.aws.openshift.queries import OCPAWSTagQueryHandler
 from api.tags.serializers import OCPAWSTagsQueryParamSerializer
 from api.tags.view import TagView
 from reporting.provider.aws.models import AWSTagsSummary
+from reporting.provider.ocp.models import OCPStorageVolumeLabelSummary
+from reporting.provider.ocp.models import OCPUsagePodLabelSummary
 
 
 class OCPAWSTagView(TagView):
@@ -17,5 +19,5 @@ class OCPAWSTagView(TagView):
     provider = "ocp_aws"
     serializer = OCPAWSTagsQueryParamSerializer
     query_handler = OCPAWSTagQueryHandler
-    tag_handler = [AWSTagsSummary]
+    tag_handler = [AWSTagsSummary, OCPUsagePodLabelSummary, OCPStorageVolumeLabelSummary]
     permission_classes = [AwsAccessPermission & OpenShiftAccessPermission]
