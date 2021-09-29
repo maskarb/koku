@@ -31,7 +31,8 @@ class ModelBakeryDataLoader(DataLoader):
     def __init__(self, schema, customer, num_days=10):
         super().__init__(schema, customer, num_days=num_days)
         self.faker = Faker()
-        self.tag_keys = [self.faker.slug() for _ in range(10)]
+        self.num_tag_keys = 10
+        self.tag_keys = [self.faker.slug() for _ in range(self.num_tag_keys)]
         self.tags = [{key: self.faker.slug()} for key in self.tag_keys]
         self._populate_enabled_tag_key_table()
 
@@ -50,7 +51,7 @@ class ModelBakeryDataLoader(DataLoader):
         """Insert records for our tag keys."""
         for table_name in ("AWSEnabledTagKeys", "AzureEnabledTagKeys", "GCPEnabledTagKeys", "OCPEnabledTagKeys"):
             with schema_context(self.schema):
-                for key in self.tag_keys:
+                for key in self.tag_keys[0 : int(self.num_tag_keys / 2)]:  # noqa: E203
                     baker.make(table_name, key=key)
 
     def create_provider(self, provider_type, credentials, billing_source, name, linked_openshift_provider=None):
@@ -195,27 +196,33 @@ class ModelBakeryDataLoader(DataLoader):
             "test-azure",
             linked_openshift_provider=linked_openshift_provider,
         )
+        sub_guid = self.faker.uuid4()
         for start_date, end_date, bill_date in self.dates:
             self.create_manifest(provider, bill_date)
             bill = self.create_bill(provider_type, provider, bill_date)
             bills.append(bill)
-            sub_guid = self.faker.uuid4()
             with schema_context(self.schema):
                 days = (end_date - start_date).days
                 for i in range(days):
-                    baker.make(
-                        "AzureCostEntryLineItemDailySummary",
-                        cost_entry_bill=bill,
-                        subscription_guid=sub_guid,
-                        usage_start=start_date + timedelta(i),
-                        usage_end=start_date + timedelta(i),
-                        service_name=random.choice(constants.AZURE_SERVICE_NAMES),
-                        instance_type=random.choice(constants.AZURE_INSTANCE_TYPES),
-                        unit_of_measure=random.choice(constants.AZURE_UNITS_OF_MEASURE),
-                        tags=random.choice(self.tags),
-                        source_uuid=provider.uuid,
-                        _fill_optional=True,
-                    )
+                    for service in constants.AZURE_SERVICES:
+                        instance = service[1]
+                        baker.make(
+                            "AzureCostEntryLineItemDailySummary",
+                            cost_entry_bill=bill,
+                            subscription_guid=sub_guid,
+                            usage_start=start_date + timedelta(i),
+                            usage_end=start_date + timedelta(i),
+                            service_name=service[0],
+                            instance_type=instance.get("type"),
+                            instance_ids=[instance.get("id")],
+                            instance_count=1 if instance.get("type") else 0,
+                            unit_of_measure=service[2] if service[2] else None,
+                            resource_location="US East",
+                            tags=random.choice(self.tags),
+                            currency="USD",
+                            source_uuid=provider.uuid,
+                            _fill_optional=True,
+                        )
             AzureReportDBAccessor(self.schema).populate_tags_summary_table([bill.id], start_date, end_date)
         refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
         return provider, bills
@@ -230,7 +237,7 @@ class ModelBakeryDataLoader(DataLoader):
         provider = self.create_provider(
             provider_type, credentials, billing_source, "test-gcp", linked_openshift_provider=linked_openshift_provider
         )
-        projects = [(self.faker.slug(), self.faker.slug()) for _ in range(10)]
+        projects = [(self.faker.slug(), self.faker.slug()) for _ in range(3)]
         for start_date, end_date, bill_date in self.dates:
             self.create_manifest(provider, bill_date)
             bill = self.create_bill(provider_type, provider, bill_date)
@@ -238,22 +245,26 @@ class ModelBakeryDataLoader(DataLoader):
             with schema_context(self.schema):
                 days = (end_date - start_date).days
                 for i in range(days):
-                    project = random.choice(projects)
-                    service = random.choice(constants.GCP_SERVICES)
-                    baker.make(
-                        "GCPCostEntryLineItemDailySummary",
-                        cost_entry_bill=bill,
-                        account_id=account_id,
-                        project_id=project[0],
-                        project_name=project[1],
-                        usage_start=start_date + timedelta(i),
-                        usage_end=start_date + timedelta(i),
-                        service_id=service[0],
-                        service_alias=service[1],
-                        tags=random.choice(self.tags),
-                        source_uuid=provider.uuid,
-                        _fill_optional=True,
-                    )
+                    for project in projects:
+                        for service in constants.GCP_SERVICES:
+                            baker.make(
+                                "GCPCostEntryLineItemDailySummary",
+                                cost_entry_bill=bill,
+                                invoice_month=bill_date.strftime("%Y%m"),
+                                account_id=account_id,
+                                project_id=project[0],
+                                project_name=project[1],
+                                usage_start=start_date + timedelta(i),
+                                usage_end=start_date + timedelta(i),
+                                service_id=service[0],
+                                service_alias=service[1],
+                                sku_id=service[0],
+                                sku_alias=service[2],
+                                unit=service[3],
+                                tags=random.choice(self.tags),
+                                source_uuid=provider.uuid,
+                                _fill_optional=True,
+                            )
             GCPReportDBAccessor(self.schema).populate_tags_summary_table([bill.id], start_date, end_date)
         refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
         return provider, bills
@@ -345,8 +356,10 @@ class ModelBakeryDataLoader(DataLoader):
                                 infrastructure_raw_cost=infra_raw_cost,
                                 infrastructure_project_raw_cost=project_infra_raw_cost,
                                 infrastructure_usage_cost=None,
+                                infrastructure_monthly_cost=None,
                                 infrastructure_monthly_cost_json=None,
                                 supplementary_usage_cost=None,
+                                supplementary_monthly_cost=None,
                                 supplementary_monthly_cost_json=None,
                                 infrastructure_project_monthly_cost=None,
                                 supplementary_project_monthly_cost=None,
@@ -354,6 +367,12 @@ class ModelBakeryDataLoader(DataLoader):
                                 _fill_optional=True,
                             )
             OCPReportDBAccessor(self.schema).populate_pod_label_summary_table([report_period.id], start_date, end_date)
+            OCPReportDBAccessor(self.schema).populate_volume_label_summary_table(
+                [report_period.id], start_date, end_date
+            )
+            OCPReportDBAccessor(self.schema).update_line_item_daily_summary_with_enabled_tags(
+                start_date, end_date, [report_period.id]
+            )
             update_cost_model_costs.s(
                 self.schema, provider.uuid, start_date, end_date, tracing_id="12345", synchronous=True
             ).apply()
@@ -372,38 +391,56 @@ class ModelBakeryDataLoader(DataLoader):
             update_method = partial(AzureReportDBAccessor(self.schema).populate_ocp_on_azure_tags_summary_table)
 
         provider = Provider.objects.filter(type=provider_type).first()
+        namespaces = {node[0]: self.faker.slug() for node in constants.OCP_NODES}
+        volumes = {node[0]: constants.OCP_PVCS[i] for i, node in enumerate(constants.OCP_NODES)}
         for dates, bill, report_period in zip(self.dates, bills, report_periods):
             start_date = dates[0]
             end_date = dates[1]
             with schema_context(self.schema):
                 days = (end_date - start_date).days
                 for i in range(days):
-                    baker.make(
-                        daily_summary_table,
-                        report_period=report_period,
-                        cluster_id=cluster_id,
-                        cluster_alias=cluster_id,
-                        usage_start=start_date + timedelta(i),
-                        usage_end=start_date + timedelta(i),
-                        cost_entry_bill=bill,
-                        tags=random.choice(self.tags),
-                        source_uuid=provider.uuid,
-                        _fill_optional=True,
-                    )
-                    baker.make(
-                        project_summary_table,
-                        report_period=report_period,
-                        cluster_id=cluster_id,
-                        cluster_alias=cluster_id,
-                        data_source=random.choice(constants.OCP_DATA_SOURCES),
-                        usage_start=start_date + timedelta(i),
-                        usage_end=start_date + timedelta(i),
-                        pod_labels=random.choice(self.tags),
-                        cost_entry_bill=bill,
-                        tags=random.choice(self.tags),
-                        source_uuid=provider.uuid,
-                        _fill_optional=True,
-                    )
+                    for node_tuple in constants.OCP_NODES:
+                        namespace = namespaces.get(node_tuple[0])
+                        pvc_tuple = volumes.get(node_tuple[0])
+                        for data_source in constants.OCP_DATA_SOURCES:
+                            persistent_volume_claim = pvc_tuple[0] if data_source == "Storage" else None
+                            persistent_volume = pvc_tuple[1] if data_source == "Storage" else None
+                            storage_class = pvc_tuple[2] if data_source == "Storage" else None
+                            baker.make(
+                                daily_summary_table,
+                                report_period=report_period,
+                                cluster_id=cluster_id,
+                                cluster_alias=cluster_id,
+                                node=node_tuple[0],
+                                resource_id=node_tuple[1],
+                                usage_start=start_date + timedelta(i),
+                                usage_end=start_date + timedelta(i),
+                                cost_entry_bill=bill,
+                                namespace=[namespace],
+                                tags=random.choice(self.tags),
+                                source_uuid=provider.uuid,
+                                _fill_optional=True,
+                            )
+                            baker.make(
+                                project_summary_table,
+                                report_period=report_period,
+                                cluster_id=cluster_id,
+                                cluster_alias=cluster_id,
+                                node=node_tuple[0],
+                                resource_id=node_tuple[1],
+                                usage_start=start_date + timedelta(i),
+                                usage_end=start_date + timedelta(i),
+                                pod_labels=random.choice(self.tags),
+                                cost_entry_bill=bill,
+                                namespace=namespace,
+                                data_source=data_source,
+                                persistentvolumeclaim=persistent_volume_claim,
+                                persistentvolume=persistent_volume,
+                                storageclass=storage_class,
+                                tags=random.choice(self.tags),
+                                source_uuid=provider.uuid,
+                                _fill_optional=True,
+                            )
             update_method([bill.id], start_date, end_date)
 
         refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
