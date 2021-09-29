@@ -60,6 +60,7 @@ from api.views import OCPClustersView
 from api.views import OCPCostForecastView
 from api.views import OCPCostView
 from api.views import OCPCpuView
+from api.views import OCPGCPCostView
 from api.views import OCPMemoryView
 from api.views import OCPNodesView
 from api.views import OCPProjectsView
@@ -77,6 +78,7 @@ from koku.cache import OPENSHIFT_ALL_CACHE_PREFIX
 from koku.cache import OPENSHIFT_AWS_CACHE_PREFIX
 from koku.cache import OPENSHIFT_AZURE_CACHE_PREFIX
 from koku.cache import OPENSHIFT_CACHE_PREFIX
+from koku.cache import OPENSHIFT_GCP_CACHE_PREFIX
 from sources.api.views import SourcesViewSet
 
 
@@ -359,6 +361,13 @@ urlpatterns = [
         "reports/gcp/storage/",
         cache_page(timeout=settings.CACHE_MIDDLEWARE_SECONDS, key_prefix=GCP_CACHE_PREFIX)(GCPStorageView.as_view()),
         name="reports-gcp-storage",
+    ),
+    path(
+        "reports/openshift/infrastructures/gcp/costs/",
+        cache_page(timeout=settings.CACHE_MIDDLEWARE_SECONDS, key_prefix=OPENSHIFT_GCP_CACHE_PREFIX)(
+            OCPGCPCostView.as_view()
+        ),
+        name="reports-openshift-gcp-costs",
     ),
 ]
 urlpatterns += ROUTER.urls
