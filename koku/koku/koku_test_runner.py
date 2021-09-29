@@ -25,7 +25,6 @@ from reporting.models import OCPEnabledTagKeys
 
 GITHUB_ACTIONS = ENVIRONMENT.bool("GITHUB_ACTIONS", default=False)
 LOG = logging.getLogger(__name__)
-OCP_ENABLED_TAGS = ["app", "storageclass", "environment", "version"]
 
 if GITHUB_ACTIONS:
     sys.stdout = open(os.devnull, "w")
@@ -94,9 +93,6 @@ def setup_databases(verbosity, interactive, keepdb=False, debug_sql=False, paral
                         customer, __ = Customer.objects.get_or_create(
                             account_id=KokuTestRunner.account, schema_name=KokuTestRunner.schema
                         )
-                        with tenant_context(tenant):
-                            for tag_key in OCP_ENABLED_TAGS:
-                                OCPEnabledTagKeys.objects.get_or_create(key=tag_key)
                         data_loader = ModelBakeryDataLoader(KokuTestRunner.schema, customer)
                         ocp_on_aws_cluster_id = "OCP-on-AWS"
                         ocp_on_azure_cluster_id = "OCP-on-Azure"
