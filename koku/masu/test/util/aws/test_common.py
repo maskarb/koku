@@ -13,6 +13,7 @@ import boto3
 import pandas as pd
 from botocore.exceptions import ClientError
 from dateutil.relativedelta import relativedelta
+from django.test.utils import override_settings
 from faker import Faker
 from tenant_schemas.utils import schema_context
 
@@ -183,9 +184,7 @@ class TestAWSUtils(MasuTestCase):
         mock_client = mock_session.client
         mock_client.return_value.get_paginator.side_effect = ClientError({}, "Error")
 
-        mock_account_id = "111111111111"
-        role_arn = f"arn:aws:iam::{mock_account_id}:role/CostManagement"
-
+        role_arn = "arn:aws:iam::111111111111:role/CostManagement"
         accounts = utils.get_account_names_by_organization(role_arn, mock_session)
         self.assertEqual(accounts, [])
 
@@ -196,9 +195,7 @@ class TestAWSUtils(MasuTestCase):
         mock_client = mock_session.client
         mock_client.return_value.get_paginator.side_effect = ClientError({}, "Error")
 
-        mock_account_id = "111111111111"
-        role_arn = f"arn:aws:iam::{mock_account_id}:role/CostManagement"
-
+        role_arn = "arn:aws:iam::111111111111:role/CostManagement"
         accounts = utils.get_account_names_by_organization(role_arn)
         self.assertEqual(accounts, [])
 
@@ -346,8 +343,9 @@ class TestAWSUtils(MasuTestCase):
 
     def test_copy_data_to_s3_bucket(self):
         """Test copy_data_to_s3_bucket."""
-        upload = utils.copy_data_to_s3_bucket("request_id", "path", "filename", "data", "manifest_id")
-        self.assertEqual(upload, None)
+        with override_settings(ENABLE_PARQUET_PROCESSING=False):
+            upload = utils.copy_data_to_s3_bucket("request_id", "path", "filename", "data", "manifest_id")
+            self.assertEqual(upload, None)
 
         with patch("masu.util.aws.common.settings", ENABLE_S3_ARCHIVING=True):
             with patch("masu.util.aws.common.get_s3_resource") as mock_s3:
