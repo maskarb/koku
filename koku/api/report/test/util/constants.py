@@ -5,16 +5,25 @@
 AWS_INSTANCE_TYPES = ("db.t3.medium", "db.r5.2xlarge", "m5.large", "r4.large", "t2.micro", None)
 AWS_PRODUCT_CODES = ("AmazonRDS", "AmazonElastiCache", "AmazonS3", "AmazonVPC", "AmazonEC2")
 
-AZURE_INSTANCE_TYPES = ("Standard_A0", "Standard_B2s", None)
-AZURE_SERVICE_NAMES = ("SQL Database", "Virtual Machines", "Virtual Network", "DNS", "Load Balancer")
-AZURE_UNITS_OF_MEASURE = ("Hrs", "GB-Mo")
+AZURE_SERVICES = (
+    ("SQL Database", {"type": None, "id": None}, "Hrs"),
+    ("Virtual Machines", {"type": "Standard_A0", "id": "id1"}, "Hrs"),
+    ("Virtual Machines", {"type": "Standard_B2s", "id": "id2"}, "Hrs"),
+    ("Virtual Network", {"type": None, "id": None}, ""),
+    ("DNS", {"type": None, "id": None}, ""),
+    ("Load Balancer", {"type": None, "id": None}, ""),
+    ("General Block Blob", {"type": None, "id": None}, "GB-Mo"),
+    ("Blob Storage", {"type": None, "id": None}, "GB-Mo"),
+    ("Standard SSD Managed Disks", {"type": None, "id": None}, "GB-Mo"),
+)
 
 GCP_INSTANCE_TYPES = ()
 GCP_SERVICES = (
-    ("6F81-5844-456A", "Compute Engine"),
-    ("24E6-581D-38E5", "Big Query"),
-    ("FA26-5236-B8B5", "Cloud DNS"),
-    ("1111-581D-38E5", "SQL Database"),
+    ("6F81-5844-456A", "Compute Engine", "Instance Core running", "hour"),
+    ("1111-581D-38E5", "SQL Database", "Storage PD Snapshot", "gibibyte month"),
+    ("95FF-2EF5-5EA1", "Cloud Storage", "Standard Storage US Regional", "gibibyte month"),
+    ("12B3-1234-JK3C", "Network", "ManagedZone", "seconds"),
+    ("23C3-JS3K-SDL3", "VPC", "ManagedZone", "seconds"),
 )
 
 OCP_DATA_SOURCES = ("Pod", "Storage")
