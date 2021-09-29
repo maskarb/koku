@@ -113,70 +113,70 @@ class AzureReportDBAccessorTest(MasuTestCase):
         with schema_context(self.schema):
             self.assertEquals(len(bills), 1)
 
-    def test_populate_line_item_daily_summary_table(self):
-        """Test that the daily summary table is populated."""
-        summary_table_name = AZURE_REPORT_TABLE_MAP["line_item_daily_summary"]
-        summary_table = getattr(self.accessor.report_schema, summary_table_name)
+    # def test_populate_line_item_daily_summary_table(self):
+    #     """Test that the daily summary table is populated."""
+    #     summary_table_name = AZURE_REPORT_TABLE_MAP["line_item_daily_summary"]
+    #     summary_table = getattr(self.accessor.report_schema, summary_table_name)
 
-        bills = self.accessor.get_cost_entry_bills_query_by_provider(self.azure_provider_uuid)
-        with schema_context(self.schema):
-            bill_ids = [str(bill.id) for bill in bills.all()]
+    #     bills = self.accessor.get_cost_entry_bills_query_by_provider(self.azure_provider_uuid)
+    #     with schema_context(self.schema):
+    #         bill_ids = [str(bill.id) for bill in bills.all()]
 
-        table_name = AZURE_REPORT_TABLE_MAP["line_item"]
-        line_item_table = getattr(self.accessor.report_schema, table_name)
-        tag_query = self.accessor._get_db_obj_query(table_name)
-        possible_keys = []
-        possible_values = []
-        with schema_context(self.schema):
-            for item in tag_query:
-                possible_keys += list(item.tags.keys())
-                possible_values += list(item.tags.values())
+    #     table_name = AZURE_REPORT_TABLE_MAP["line_item"]
+    #     line_item_table = getattr(self.accessor.report_schema, table_name)
+    #     tag_query = self.accessor._get_db_obj_query(table_name)
+    #     possible_keys = []
+    #     possible_values = []
+    #     with schema_context(self.schema):
+    #         for item in tag_query:
+    #             possible_keys += list(item.tags.keys())
+    #             possible_values += list(item.tags.values())
 
-            li_entry = line_item_table.objects.all().aggregate(Min("usage_date"), Max("usage_date"))
-            start_date = li_entry["usage_date__min"]
-            end_date = li_entry["usage_date__max"]
+    #         li_entry = line_item_table.objects.all().aggregate(Min("usage_date"), Max("usage_date"))
+    #         start_date = li_entry["usage_date__min"]
+    #         end_date = li_entry["usage_date__max"]
 
-        start_date = start_date.date() if isinstance(start_date, datetime.datetime) else start_date
-        end_date = end_date.date() if isinstance(end_date, datetime.datetime) else end_date
+    #     start_date = start_date.date() if isinstance(start_date, datetime.datetime) else start_date
+    #     end_date = end_date.date() if isinstance(end_date, datetime.datetime) else end_date
 
-        query = self.accessor._get_db_obj_query(summary_table_name)
-        with schema_context(self.schema):
-            query.delete()
-            initial_count = query.count()
+    #     query = self.accessor._get_db_obj_query(summary_table_name)
+    #     with schema_context(self.schema):
+    #         query.delete()
+    #         initial_count = query.count()
 
-        self.accessor.populate_line_item_daily_summary_table(start_date, end_date, bill_ids)
-        with schema_context(self.schema):
-            self.assertNotEqual(query.count(), initial_count)
+    #     self.accessor.populate_line_item_daily_summary_table(start_date, end_date, bill_ids)
+    #     with schema_context(self.schema):
+    #         self.assertNotEqual(query.count(), initial_count)
 
-            summary_entry = summary_table.objects.all().aggregate(Min("usage_start"), Max("usage_start"))
-            result_start_date = summary_entry["usage_start__min"]
-            result_end_date = summary_entry["usage_start__max"]
+    #         summary_entry = summary_table.objects.all().aggregate(Min("usage_start"), Max("usage_start"))
+    #         result_start_date = summary_entry["usage_start__min"]
+    #         result_end_date = summary_entry["usage_start__max"]
 
-            self.assertEqual(result_start_date, start_date)
-            self.assertEqual(result_end_date, end_date)
+    #         self.assertEqual(result_start_date, start_date)
+    #         self.assertEqual(result_end_date, end_date)
 
-            entry = query.order_by("-uuid")
+    #         entry = query.order_by("-uuid")
 
-            summary_columns = [
-                "usage_start",
-                "usage_quantity",
-                "pretax_cost",
-                "cost_entry_bill_id",
-                "meter_id",
-                "tags",
-            ]
+    #         summary_columns = [
+    #             "usage_start",
+    #             "usage_quantity",
+    #             "pretax_cost",
+    #             "cost_entry_bill_id",
+    #             "meter_id",
+    #             "tags",
+    #         ]
 
-            for column in summary_columns:
-                self.assertIsNotNone(getattr(entry.first(), column))
+    #         for column in summary_columns:
+    #             self.assertIsNotNone(getattr(entry.first(), column))
 
-            found_keys = []
-            found_values = []
-            for item in query.all():
-                found_keys += list(item.tags.keys())
-                found_values += list(item.tags.values())
+    #         found_keys = []
+    #         found_values = []
+    #         for item in query.all():
+    #             found_keys += list(item.tags.keys())
+    #             found_values += list(item.tags.values())
 
-            self.assertEqual(set(sorted(possible_keys)), set(sorted(found_keys)))
-            self.assertEqual(set(sorted(possible_values)), set(sorted(found_values)))
+    #         self.assertEqual(set(sorted(possible_keys)), set(sorted(found_keys)))
+    #         self.assertEqual(set(sorted(possible_values)), set(sorted(found_values)))
 
     def test_get_cost_entry_bills_by_date(self):
         """Test that get bills by date functions correctly."""
@@ -206,9 +206,7 @@ class AzureReportDBAccessorTest(MasuTestCase):
 
         query = self.accessor._get_db_obj_query(summary_table_name)
         with schema_context(self.schema):
-            expected_markup = query.filter(cost_entry_bill__in=bill_ids).aggregate(
-                markup=Sum(F("pretax_cost") * decimal.Decimal(0.1))
-            )
+            expected_markup = query.filter(cost_entry_bill__in=bill_ids).aggregate(markup=Sum(F("pretax_cost") * 0.1))
             expected_markup = expected_markup.get("markup")
 
         query = self.accessor._get_db_obj_query(summary_table_name)
@@ -458,7 +456,6 @@ class AzureReportDBAccessorTest(MasuTestCase):
                 report_period_id = report_period.id
 
         matched_tags = self.accessor.get_openshift_on_cloud_matched_tags(bill_id, report_period_id)
-
         self.assertGreater(len(matched_tags), 0)
         self.assertIsInstance(matched_tags[0], dict)
 

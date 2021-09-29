@@ -402,6 +402,9 @@ class OCPReportDBAccessorTest(MasuTestCase):
         end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
         query = self.accessor._get_db_obj_query(agg_table_name)
+        with schema_context(self.schema):
+            query.all().delete()
+        self.accessor.populate_pod_label_summary_table([self.reporting_period.id], start_date, end_date)
 
         with schema_context(self.schema):
             tags = query.all()
@@ -420,7 +423,7 @@ class OCPReportDBAccessorTest(MasuTestCase):
 
     def test_populate_volume_label_summary_table(self):
         """Test that the volume label summary table is populated."""
-        agg_table_name = OCP_REPORT_TABLE_MAP["pod_label_summary"]
+        agg_table_name = OCP_REPORT_TABLE_MAP["volume_label_summary"]
 
         start_date = self.dh.last_month_start
         end_date = self.dh.today
@@ -429,6 +432,8 @@ class OCPReportDBAccessorTest(MasuTestCase):
         end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
         query = self.accessor._get_db_obj_query(agg_table_name)
+        with schema_context(self.schema):
+            query.all().delete()
         self.accessor.populate_volume_label_summary_table([self.reporting_period.id], start_date, end_date)
 
         with schema_context(self.schema):
@@ -443,7 +448,6 @@ class OCPReportDBAccessorTest(MasuTestCase):
 
                 expected_tag_keys = cursor.fetchall()
                 expected_tag_keys = [tag[0] for tag in expected_tag_keys]
-
         self.assertEqual(sorted(tag_keys), sorted(expected_tag_keys))
 
     def test_get_usage_period_on_or_before_date(self):

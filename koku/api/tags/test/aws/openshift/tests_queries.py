@@ -13,6 +13,7 @@ from api.utils import DateHelper
 from reporting.models import OCPAWSCostLineItemDailySummary
 from reporting.models import OCPAWSTagsSummary
 from reporting.provider.aws.openshift.models import OCPAWSTagsValues
+from reporting.provider.ocp.models import OCPEnabledTagKeys
 
 
 class OCPAWSTagQueryHandlerTest(IamTestCase):
@@ -110,7 +111,7 @@ class OCPAWSTagQueryHandlerTest(IamTestCase):
             )
             tag_keys = [tag.get("tag_keys") for tag in tag_keys]
 
-        result = handler.get_tag_keys()
+        result = handler.get_tag_keys(filters=False)
         self.assertEqual(sorted(result), sorted(tag_keys))
 
     def test_get_tag_cluster_filter(self):
@@ -128,12 +129,13 @@ class OCPAWSTagQueryHandlerTest(IamTestCase):
             )
             tag_keys = [tag.get("key") for tag in tag_keys]
 
-        result = handler.get_tag_keys()
+        result = handler.get_tag_keys(filters=False)
         self.assertEqual(sorted(result), sorted(tag_keys))
 
     def test_execute_query_for_key_filter(self):
         """Test that the execute query runs properly with key query."""
-        key = "version"
+        with tenant_context(self.tenant):
+            key = OCPEnabledTagKeys.objects.first().key
         url = f"?filter[key]={key}"
         query_params = self.mocked_query_params(url, OCPAWSTagView)
         handler = OCPAWSTagQueryHandler(query_params)

@@ -16,6 +16,7 @@ from api.utils import DateHelper
 from reporting.models import OCPStorageVolumeLabelSummary
 from reporting.models import OCPUsageLineItemDailySummary
 from reporting.models import OCPUsagePodLabelSummary
+from reporting.provider.ocp.models import OCPEnabledTagKeys
 from reporting.provider.ocp.models import OCPTagsValues
 
 
@@ -132,11 +133,12 @@ class OCPTagQueryHandlerTest(IamTestCase):
             )
             storage_tag_keys = [tag.get("tag_keys") for tag in storage_tag_keys]
             tag_keys = list(set(usage_tag_keys + storage_tag_keys))
+            check_tag = OCPEnabledTagKeys.objects.first().key
 
         result = handler.get_tag_keys(filters=True)
         self.assertNotEqual(sorted(result), sorted(tag_keys))
-        self.assertIn("qa", result)
-        self.assertNotIn("qa", tag_keys)
+        self.assertIn(check_tag, tag_keys)
+        self.assertNotIn(check_tag, result)
 
         url = (
             "?filter[time_scope_units]=month&filter[time_scope_value]=-2"
@@ -167,11 +169,12 @@ class OCPTagQueryHandlerTest(IamTestCase):
             storage_tag_keys = [tag.get("key") for tag in storage_tag_keys]
 
             tag_keys = list(set(usage_tag_keys + storage_tag_keys))
+            check_tag = OCPEnabledTagKeys.objects.first().key
 
         result = handler.get_tag_keys(filters=False)
-        self.assertNotEqual(sorted(result), sorted(tag_keys))
-        self.assertIn("qa", result)
-        self.assertNotIn("qa", tag_keys)
+        self.assertEqual(sorted(result), sorted(tag_keys))
+        self.assertIn(check_tag, result)
+        self.assertIn(check_tag, tag_keys)
 
     def test_get_tag_type_filter_pod(self):
         """Test that all usage tags are returned with pod type filter."""
@@ -182,23 +185,16 @@ class OCPTagQueryHandlerTest(IamTestCase):
         handler = OCPTagQueryHandler(query_params)
 
         with tenant_context(self.tenant):
-            usage_tag_keys = (
-                OCPUsageLineItemDailySummary.objects.annotate(tag_keys=JSONBObjectKeys("pod_labels"))
-                .values("tag_keys")
-                .distinct()
-                .all()
-            )
-
-            usage_tag_keys = [tag.get("tag_keys") for tag in usage_tag_keys]
-            tag_keys = usage_tag_keys
+            pod_label_keys = OCPUsagePodLabelSummary.objects.values("key").distinct()
+            enabled_keys = OCPEnabledTagKeys.objects.values("key").distinct()
+            pod_label_keys = [key.get("key") for key in pod_label_keys]
+            enabled_tag_keys = [key.get("key") for key in enabled_keys]
 
         result = handler.get_tag_keys(filters=False)
-        self.assertNotEqual(sorted(result), sorted(tag_keys))
-        self.assertIn("qa", result)
-        self.assertNotIn("qa", tag_keys)
+        self.assertEqual(sorted(result), sorted(pod_label_keys))
 
         result = handler.get_tag_keys(filters=True)
-        self.assertEqual(sorted(result), sorted(tag_keys))
+        self.assertEqual(sorted(result), sorted(enabled_tag_keys))
 
     def test_get_tag_type_filter_storage(self):
         """Test that all storage tags are returned with storage type filter."""
@@ -222,20 +218,16 @@ class OCPTagQueryHandlerTest(IamTestCase):
         handler = OCPTagQueryHandler(query_params)
 
         with tenant_context(self.tenant):
-            storage_tag_keys = (
-                OCPStorageVolumeLabelSummary.objects.filter(report_period__cluster_id__contains="OCP-on-AWS")
-                .values("key")
-                .distinct()
-                .all()
-            )
-            tag_keys = [tag.get("key") for tag in storage_tag_keys]
+            enabled_keys = OCPEnabledTagKeys.objects.values("key").distinct()
+            tag_keys = [tag.get("key") for tag in enabled_keys]
 
         result = handler.get_tag_keys()
         self.assertEqual(sorted(result), sorted(tag_keys))
 
     def test_get_tags_for_key_filter(self):
         """Test that get tags runs properly with key query."""
-        key = "version"
+        with tenant_context(self.tenant):
+            key = OCPEnabledTagKeys.objects.first().key
         url = f"?filter[key]={key}"
         query_params = self.mocked_query_params(url, OCPTagView)
         handler = OCPTagQueryHandler(query_params)

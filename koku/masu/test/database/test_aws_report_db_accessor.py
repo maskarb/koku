@@ -4,7 +4,6 @@
 #
 """Test the AWSReportDBAccessor utility object."""
 import datetime
-import decimal
 import random
 import string
 from decimal import Decimal
@@ -802,7 +801,7 @@ class AWSReportDBAccessorTest(MasuTestCase):
             with connection.cursor() as cursor:
                 cursor.execute(
                     """SELECT DISTINCT jsonb_object_keys(tags)
-                        FROM reporting_awscostentrylineitem_daily"""
+                        FROM reporting_awscostentrylineitem_daily_summary"""
                 )
                 expected_tag_keys = cursor.fetchall()
                 expected_tag_keys = [tag[0] for tag in expected_tag_keys]
@@ -944,7 +943,7 @@ class AWSReportDBAccessorTest(MasuTestCase):
         query = self.accessor._get_db_obj_query(summary_table_name)
         with schema_context(self.schema):
             expected_markup = query.filter(cost_entry_bill__in=bill_ids).aggregate(
-                markup=Sum(F("unblended_cost") * decimal.Decimal(0.1))
+                markup=Sum(F("unblended_cost") * 0.1)
             )
             expected_markup = expected_markup.get("markup")
 

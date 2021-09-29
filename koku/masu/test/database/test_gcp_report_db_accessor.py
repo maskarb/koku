@@ -224,9 +224,9 @@ class GCPReportDBAccessorTest(MasuTestCase):
 
     def test_delete_line_item_daily_summary_entries_for_date_range(self):
         """Test that daily summary rows are deleted."""
-        with schema_context(self.schema):
-            start_date = GCPCostEntryLineItemDailySummary.objects.aggregate(Max("usage_start")).get("usage_start__max")
-            end_date = start_date
+        dh = DateHelper()
+        start_date = dh.this_month_start
+        end_date = dh.this_month_end
 
         table_query = GCPCostEntryLineItemDailySummary.objects.filter(
             source_uuid=self.gcp_provider_uuid, usage_start__gte=start_date, usage_start__lte=end_date

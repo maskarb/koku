@@ -527,7 +527,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         current_totals = self.get_totals_costs_by_time_scope(aggregates, filters)
         expected_cost_total = current_totals.get("cost_total")
         self.assertIsNotNone(expected_cost_total)
-        result_cost_total = total.get("cost", {}).get("raw", {}).get("value")
+        result_cost_total = total.get("cost", {}).get("total", {}).get("value")
         self.assertIsNotNone(result_cost_total)
         self.assertEqual(result_cost_total, expected_cost_total)
 
@@ -628,7 +628,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         current_totals = self.get_totals_costs_by_time_scope(aggregates, filters)
         expected_cost_total = current_totals.get("cost_total")
         self.assertIsNotNone(expected_cost_total)
-        result_cost_total = total.get("cost", {}).get("raw", {}).get("value")
+        result_cost_total = total.get("cost", {}).get("total", {}).get("value")
         self.assertIsNotNone(result_cost_total)
         self.assertEqual(result_cost_total, expected_cost_total)
 
@@ -663,7 +663,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         current_totals = self.get_totals_costs_by_time_scope(aggregates, filters)
         expected_cost_total = current_totals.get("cost_total")
         self.assertIsNotNone(expected_cost_total)
-        result_cost_total = total.get("cost", {}).get("raw", {}).get("value")
+        result_cost_total = total.get("cost", {}).get("total", {}).get("value")
         self.assertIsNotNone(result_cost_total)
         self.assertEqual(result_cost_total, expected_cost_total)
 
@@ -1086,7 +1086,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         ag_key = "cost_total"
         with tenant_context(self.tenant):
             totals = AzureCostEntryLineItemDailySummary.objects.filter(
-                usage_start__gte=self.dh.this_month_start
+                usage_start__gte=self.dh.this_month_start, tags__has_key=filter_key
             ).aggregate(**{ag_key: Sum(F("pretax_cost") + F("markup_cost"))})
 
         url = f"?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=monthly&filter[tag:{filter_key}]=*"  # noqa: E501
@@ -1112,7 +1112,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         ag_key = "cost_total"
         with tenant_context(self.tenant):
             totals = AzureCostEntryLineItemDailySummary.objects.filter(
-                usage_start__gte=self.dh.this_month_start
+                usage_start__gte=self.dh.this_month_start, tags__has_key=group_by_key
             ).aggregate(**{ag_key: Sum(F("pretax_cost") + F("markup_cost"))})
 
         url = f"?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=monthly&group_by[tag:{group_by_key}]=*"  # noqa: E501

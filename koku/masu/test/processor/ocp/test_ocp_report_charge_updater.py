@@ -475,15 +475,16 @@ class OCPCostModelCostUpdaterTest(MasuTestCase):
                 report_period__provider_id=self.ocp_on_prem_provider.uuid,
                 usage_start__gte=start_date,
                 infrastructure_raw_cost__isnull=True,
+                monthly_cost_type__isnull=True,
                 data_source="Pod",
             ).first()
             volume_line_item = OCPUsageLineItemDailySummary.objects.filter(
                 report_period__provider_id=self.ocp_on_prem_provider.uuid,
                 usage_start__gte=start_date,
                 infrastructure_raw_cost__isnull=True,
+                monthly_cost_type__isnull=True,
                 data_source="Storage",
             ).first()
-
             # Usage cost
             self.assertNotEqual(pod_line_item.supplementary_usage_cost.get("cpu"), 0)
             self.assertNotEqual(volume_line_item.supplementary_usage_cost.get("storage"), 0)
