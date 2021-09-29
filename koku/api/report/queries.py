@@ -260,6 +260,11 @@ class ReportQueryHandler(QueryHandler):
                 for item in list_:
                     q_filter = QueryFilter(parameter=item, **filt)
                     filters.add(q_filter)
+            elif list_ and ReportQueryHandler.has_wildcard(list_):
+                item = strip_tag_prefix(tag)
+                filt = {"field": tag_column, "operation": "has_key"}
+                q_filter = QueryFilter(parameter=item, **filt)
+                filters.add(q_filter)
         return filters
 
     def _set_operator_specified_tag_filters(self, filters, operator):
@@ -280,6 +285,11 @@ class ReportQueryHandler(QueryHandler):
                 for item in list_:
                     q_filter = QueryFilter(parameter=item, logical_operator=operator, **filt)
                     filters.add(q_filter)
+            elif list_ and ReportQueryHandler.has_wildcard(list_):
+                filt = {"field": tag_column, "operation": "has_key", "item": strip_tag_prefix(tag)}
+                q_filter = QueryFilter(parameter=item, logical_operator=operator, **filt)
+                filters.add(q_filter)
+
         return filters
 
     def _set_operator_specified_filters(self, operator):
