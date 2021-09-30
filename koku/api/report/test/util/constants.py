@@ -2,8 +2,38 @@
 # Copyright 2021 Red Hat Inc.
 # SPDX-License-Identifier: Apache-2.0
 #
-AWS_INSTANCE_TYPES = ("db.t3.medium", "db.r5.2xlarge", "m5.large", "r4.large", "t2.micro", None)
-AWS_PRODUCT_CODES = ("AmazonRDS", "AmazonElastiCache", "AmazonS3", "AmazonVPC", "AmazonEC2")
+# AWS_INSTANCE_TYPES = ("db.t3.medium", "db.r5.2xlarge", "m5.large", "r4.large", "t2.micro", None)
+# AWS_PRODUCT_CODES = ("AmazonRDS", "AmazonElastiCache", "AmazonS3", "AmazonVPC", "AmazonEC2")
+
+AWS_REGIONS = (
+    ("us-east-1", "us-east-1a"),
+    ("us-west-2", "us-west-2a"),
+    ("eu-west-1", "eu-west-1c"),
+    ("ap-southeast-2", "ap-southeast-2b"),
+    ("af-south-1", "af-south-1a"),
+)
+# Product Code, Product Name, Product Family, Instances, Units
+AWS_SERVICES = (
+    (
+        "AmazonRDS",
+        "Amazon Relational Database Service",
+        "Database Instance",
+        {"type": "db.t3.medium", "id": "i-11111111"},
+        "Hrs",
+    ),
+    (
+        "AmazonRDS",
+        "Amazon Relational Database Service",
+        "Database Instance",
+        {"type": "db.r5.2xlarge", "id": "i-22222222"},
+        "Hrs",
+    ),
+    ("AmazonS3", "Amazon Simple Storage Service", "Storage Snapshot", {"type": None, "id": None}, "GB-Mo"),
+    ("AmazonVPC", "Amazon Virtual Private Cloud", "Cloud Connectivity", {"type": None, "id": None}, "Hrs"),
+    ("AmazonEC2", "Amazon Elastic Compute Cloud", "Compute Instance", {"type": "m5.large", "id": "i-33333333"}, "Hrs"),
+    ("AmazonEC2", "Amazon Elastic Compute Cloud", "Compute Instance", {"type": "r4.large", "id": "i-44444444"}, "Hrs"),
+    ("AmazonEC2", "Amazon Elastic Compute Cloud", "Compute Instance", {"type": "t2.micro", "id": "i-55555555"}, "Hrs"),
+)
 
 AZURE_SERVICES = (
     ("SQL Database", {"type": None, "id": None}, "Hrs"),

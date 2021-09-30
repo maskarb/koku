@@ -15,6 +15,7 @@ from model_bakery import baker
 from tenant_schemas.utils import schema_context
 
 from api.models import Provider
+from api.provider.models import ProviderBillingSource
 from api.report.test.util import constants
 from api.report.test.util.data_loader import DataLoader
 from masu.database.aws_report_db_accessor import AWSReportDBAccessor
@@ -23,6 +24,8 @@ from masu.database.gcp_report_db_accessor import GCPReportDBAccessor
 from masu.database.ocp_report_db_accessor import OCPReportDBAccessor
 from masu.processor.tasks import refresh_materialized_views
 from masu.processor.tasks import update_cost_model_costs
+from masu.util.aws.insert_aws_org_tree import InsertAwsOrgTree
+from reporting.provider.aws.models import AWSOrganizationalUnit
 
 
 class ModelBakeryDataLoader(DataLoader):
@@ -57,15 +60,25 @@ class ModelBakeryDataLoader(DataLoader):
     def create_provider(self, provider_type, credentials, billing_source, name, linked_openshift_provider=None):
         """Create a Provider record"""
         with override_settings(AUTO_DATA_INGEST=False):
-            # ocp_billing_source, _ = ProviderBillingSource.objects.get_or_create(data_source={})
-            provider = baker.make(
-                "Provider",
-                type=provider_type,
-                name=name,
-                authentication__credentials=credentials,
-                billing_source__data_source=billing_source,
-                customer=self.customer,
-            )
+            if provider_type == Provider.PROVIDER_OCP:
+                billing_source, _ = ProviderBillingSource.objects.get_or_create(data_source={})
+                provider = baker.make(
+                    "Provider",
+                    type=provider_type,
+                    name=name,
+                    authentication__credentials=credentials,
+                    billing_source=billing_source,
+                    customer=self.customer,
+                )
+            else:
+                provider = baker.make(
+                    "Provider",
+                    type=provider_type,
+                    name=name,
+                    authentication__credentials=credentials,
+                    billing_source__data_source=billing_source,
+                    customer=self.customer,
+                )
 
             if linked_openshift_provider:
                 infra_map = baker.make(
@@ -132,7 +145,7 @@ class ModelBakeryDataLoader(DataLoader):
 
             baker.make("CostModelMap", provider_uuid=provider.uuid, cost_model=cost_model)
 
-    def load_aws_data(self, linked_openshift_provider=None):
+    def load_aws_data(self, linked_openshift_provider=None, day_list=None):
         """Load AWS data for tests."""
         bills = []
         provider_type = Provider.PROVIDER_AWS_LOCAL
@@ -145,6 +158,16 @@ class ModelBakeryDataLoader(DataLoader):
         provider = self.create_provider(
             provider_type, credentials, billing_source, "test-aws", linked_openshift_provider=linked_openshift_provider
         )
+
+        if day_list:
+            org_tree_obj = InsertAwsOrgTree(
+                schema=self.schema, provider_uuid=provider.uuid, start_date=self.dates[0][0]
+            )
+            org_tree_obj.insert_tree(day_list=day_list)
+
+        with schema_context(self.schema):
+            org_units = AWSOrganizationalUnit.objects.all()
+
         for start_date, end_date, bill_date in self.dates:
             self.create_manifest(provider, bill_date)
             bill = self.create_bill(provider_type, provider, bill_date, payer_account_id=payer_account_id)
@@ -154,24 +177,32 @@ class ModelBakeryDataLoader(DataLoader):
                     alias = baker.make(
                         "AWSAccountAlias", account_id=bill.payer_account_id, account_alias="Test Account"
                     )
-                    org_unit = baker.make("AWSOrganizationalUnit", account_alias=alias, provider=provider)
                     create_supplemental_info = False
                 days = (end_date - start_date).days
                 for i in range(days):
-                    baker.make(
-                        "AWSCostEntryLineItemDailySummary",
-                        cost_entry_bill=bill,
-                        usage_account_id=bill.payer_account_id,
-                        account_alias=alias,
-                        organizational_unit=org_unit,
-                        usage_start=start_date + timedelta(i),
-                        usage_end=start_date + timedelta(i),
-                        product_code=random.choice(constants.AWS_PRODUCT_CODES),
-                        instance_type=random.choice(constants.AWS_INSTANCE_TYPES),
-                        tags=random.choice(self.tags),
-                        source_uuid=provider.uuid,
-                        _fill_optional=True,
-                    )
+                    for service in constants.AWS_SERVICES:
+                        instance = service[3]
+                        region = random.choice(constants.AWS_REGIONS)
+                        baker.make(
+                            "AWSCostEntryLineItemDailySummary",
+                            cost_entry_bill=bill,
+                            usage_account_id=bill.payer_account_id,
+                            account_alias=alias,
+                            organizational_unit=random.choice(org_units),
+                            usage_start=start_date + timedelta(i),
+                            usage_end=start_date + timedelta(i),
+                            product_code=service[0],
+                            product_family=service[2],
+                            instance_type=instance.get("type"),
+                            resource_count=1 if instance.get("id") else 0,
+                            resource_ids=[instance.get("id")],
+                            unit=service[4],
+                            region=region[0],
+                            availability_zone=region[1],
+                            tags=random.choice(self.tags),
+                            source_uuid=provider.uuid,
+                            _fill_optional=True,
+                        )
             AWSReportDBAccessor(self.schema).populate_tags_summary_table([bill.id], start_date, end_date)
         refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
 

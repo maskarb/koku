@@ -97,6 +97,14 @@ def setup_databases(verbosity, interactive, keepdb=False, debug_sql=False, paral
                         ocp_on_aws_cluster_id = "OCP-on-AWS"
                         ocp_on_azure_cluster_id = "OCP-on-Azure"
                         ocp_on_prem_cluster_id = "OCP-on-Prem"
+
+                        read_yaml = UploadAwsTree(None, None, None, None)
+                        tree_yaml = read_yaml.import_yaml(yaml_file_path="scripts/aws_org_tree.yml")
+                        day_list = tree_yaml["account_structure"]["days"]
+                        # Load data
+                        # data_loader = NiseDataLoader(KokuTestRunner.schema)
+                        # data_loader.load_aws_data(customer, "aws_static_data.yml", day_list=day_list)
+
                         ocp_on_aws_ocp_provider, ocp_on_aws_report_periods = data_loader.load_openshift_data(
                             ocp_on_aws_cluster_id, on_cloud=True
                         )
@@ -104,7 +112,9 @@ def setup_databases(verbosity, interactive, keepdb=False, debug_sql=False, paral
                             ocp_on_azure_cluster_id, on_cloud=True
                         )
                         _, __ = data_loader.load_openshift_data(ocp_on_prem_cluster_id, on_cloud=False)
-                        _, aws_bills = data_loader.load_aws_data(linked_openshift_provider=ocp_on_aws_ocp_provider)
+                        _, aws_bills = data_loader.load_aws_data(
+                            linked_openshift_provider=ocp_on_aws_ocp_provider, day_list=day_list
+                        )
                         _, azure_bills = data_loader.load_azure_data(
                             linked_openshift_provider=ocp_on_azure_ocp_provider
                         )

@@ -134,4 +134,3 @@ if "__main__" in __name__:
     if not upload_obj.source_exists(koku_host, koku_port):
         source_uuid = upload_obj.create_aws_source(koku_host, koku_port)
         upload_obj.upload_tree(provider_uuid=source_uuid)
-        upload_obj.run_nise_command(nise_yaml, koku_host, koku_port)
