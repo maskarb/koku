@@ -82,6 +82,7 @@ class AwsS3SyncerTestWithData(MasuTestCase):
             self.aws_provider,
             self.ocp_on_aws_ocp_provider,
             self.ocp_on_azure_ocp_provider,
+            self.ocp_on_prem_provider,
             self.azure_provider,
             self.gcp_provider,
         ]
@@ -162,8 +163,9 @@ class AwsS3SyncerTestWithData(MasuTestCase):
         """Test syncing a file from one S3 bucket to another fails due to no matching files."""
         source_bucket_name = fake.slug()
         destination_bucket_name = fake.slug()
-        schema_name = self.schema
+        self.assertNotEqual(source_bucket_name, destination_bucket_name)
 
+        schema_name = self.schema
         start_date = date(2019, 1, 1)
         end_date = date(2019, 3, 1)
         date_range = (start_date, end_date)
@@ -171,8 +173,6 @@ class AwsS3SyncerTestWithData(MasuTestCase):
         end_date = end_date - timedelta(days=1)
         days = rrule(DAILY, dtstart=start_date, until=end_date)
         months = rrule(MONTHLY, dtstart=start_date, until=end_date)
-
-        self.assertNotEqual(source_bucket_name, destination_bucket_name)
 
         mock_resource = mock_boto3.resource
         mock_buckets = mock_resource.return_value.Bucket
