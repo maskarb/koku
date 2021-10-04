@@ -28,12 +28,24 @@ from masu.util.aws.insert_aws_org_tree import InsertAwsOrgTree
 from reporting.provider.aws.models import AWSOrganizationalUnit
 
 
+def aws_service_gen():
+    service = random.choice(constants.AWS_SERVICES)
+    return {"product_code": service[0], "product_family": service[2], "unit": service[4]}
+
+
+def azure_service_gen():
+    service = random.choice(constants.AZURE_SERVICES)
+    return {"service_name": service[0], "unit_of_measure": service[2] or None}
+
+
 class ModelBakeryDataLoader(DataLoader):
     """Loads model bakery generated test data for different source types."""
 
     def __init__(self, schema, customer, num_days=10):
         super().__init__(schema, customer, num_days=num_days)
         self.faker = Faker()
+        self.currency = "USD"  # self.faker.currency_code()
+        self.unit = "Hrs"
         self.num_tag_keys = 10
         self.tag_keys = [self.faker.slug() for _ in range(self.num_tag_keys)]
         self.tags = [{key: self.faker.slug()} for key in self.tag_keys]
@@ -109,25 +121,24 @@ class ModelBakeryDataLoader(DataLoader):
         with schema_context(self.schema):
             model_str = self._get_bill_model(provider_type)
             month_end = self.dh.month_end(bill_date)
-            if provider_type == Provider.PROVIDER_OCP:
-                month_end = month_end + timedelta(days=1)
-                return baker.make(
-                    model_str,
-                    provider=provider,
-                    report_period_start=bill_date,
-                    report_period_end=month_end,
-                    _fill_optional=False,
-                    **kwargs
-                )
-            else:
+            if provider_type != Provider.PROVIDER_OCP:
                 return baker.make(
                     model_str,
                     provider=provider,
                     billing_period_start=bill_date,
                     billing_period_end=month_end,
                     _fill_optional=False,
-                    **kwargs
+                    **kwargs,
                 )
+            month_end = month_end + timedelta(days=1)
+            return baker.make(
+                model_str,
+                provider=provider,
+                report_period_start=bill_date,
+                report_period_end=month_end,
+                _fill_optional=False,
+                **kwargs,
+            )
 
     def create_cost_model(self, provider):
         """Create a cost model and map entry."""
@@ -142,9 +153,9 @@ class ModelBakeryDataLoader(DataLoader):
                 rates=cost_model_json.get("rates"),
                 distribution=cost_model_json.get("distribution"),
                 source_type=provider.type,
+                currency=self.currency,
                 _fill_optional=True,
             )
-
             baker.make("CostModelMap", provider_uuid=provider.uuid, cost_model=cost_model)
 
     def load_aws_data(self, linked_openshift_provider=None, day_list=None):
@@ -191,6 +202,7 @@ class ModelBakeryDataLoader(DataLoader):
                             usage_account_id=bill.payer_account_id,
                             account_alias=alias,
                             organizational_unit=random.choice(org_units),
+                            currency_code=self.currency,
                             usage_start=start_date + timedelta(i),
                             usage_end=start_date + timedelta(i),
                             product_code=service[0],
@@ -249,10 +261,10 @@ class ModelBakeryDataLoader(DataLoader):
                             instance_type=instance.get("type"),
                             instance_ids=[instance.get("id")],
                             instance_count=1 if instance.get("type") else 0,
-                            unit_of_measure=service[2] if service[2] else None,
+                            unit_of_measure=service[2] or None,
                             resource_location="US East",
                             tags=random.choice(self.tags),
-                            currency="USD",
+                            currency=self.currency,
                             source_uuid=provider.uuid,
                             _fill_optional=True,
                         )
@@ -295,6 +307,7 @@ class ModelBakeryDataLoader(DataLoader):
                                 sku_alias=service[2],
                                 unit=service[3],
                                 tags=random.choice(self.tags),
+                                currency=self.currency,
                                 source_uuid=provider.uuid,
                                 _fill_optional=True,
                             )
@@ -314,8 +327,8 @@ class ModelBakeryDataLoader(DataLoader):
             self.create_cost_model(provider)
         namespaces = {node[0]: self.faker.slug() for node in constants.OCP_NODES}
         volumes = {node[0]: constants.OCP_PVCS[i] for i, node in enumerate(constants.OCP_NODES)}
-        cluster_cpu_capacity = sum([node_tuple[2] for node_tuple in constants.OCP_NODES])
-        cluster_memory_capacity = sum([node_tuple[3] for node_tuple in constants.OCP_NODES])
+        cluster_cpu_capacity = sum(node_tuple[2] for node_tuple in constants.OCP_NODES)
+        cluster_memory_capacity = sum(node_tuple[3] for node_tuple in constants.OCP_NODES)
         for start_date, end_date, bill_date in self.dates:
             self.create_manifest(provider, bill_date)
             report_period = self.create_bill(
@@ -414,14 +427,20 @@ class ModelBakeryDataLoader(DataLoader):
 
     def load_openshift_on_cloud_data(self, provider_type, cluster_id, bills, report_periods):
         """Load OCP on AWS Daily Summary table."""
+        unique_fields = {}
+        service_gen = lambda *args, **kwargs: {}  # noqa: E731
         if provider_type in (Provider.PROVIDER_AWS, Provider.PROVIDER_AWS_LOCAL):
             daily_summary_table = "OCPAWSCostLineItemDailySummary"
             project_summary_table = "OCPAWSCostLineItemProjectDailySummary"
             update_method = partial(AWSReportDBAccessor(self.schema).populate_ocp_on_aws_tags_summary_table)
+            unique_fields = {"currency_code": self.currency}
+            service_gen = aws_service_gen
         elif provider_type in (Provider.PROVIDER_AZURE, Provider.PROVIDER_AZURE_LOCAL):
             daily_summary_table = "OCPAzureCostLineItemDailySummary"
             project_summary_table = "OCPAzureCostLineItemProjectDailySummary"
             update_method = partial(AzureReportDBAccessor(self.schema).populate_ocp_on_azure_tags_summary_table)
+            unique_fields = {"currency": self.currency}
+            service_gen = azure_service_gen
 
         provider = Provider.objects.filter(type=provider_type).first()
         namespaces = {node[0]: self.faker.slug() for node in constants.OCP_NODES}
@@ -439,6 +458,7 @@ class ModelBakeryDataLoader(DataLoader):
                             persistent_volume_claim = pvc_tuple[0] if data_source == "Storage" else None
                             persistent_volume = pvc_tuple[1] if data_source == "Storage" else None
                             storage_class = pvc_tuple[2] if data_source == "Storage" else None
+                            unique_fields.update(**service_gen())
                             baker.make(
                                 daily_summary_table,
                                 report_period=report_period,
@@ -452,6 +472,7 @@ class ModelBakeryDataLoader(DataLoader):
                                 namespace=[namespace],
                                 tags=random.choice(self.tags),
                                 source_uuid=provider.uuid,
+                                **unique_fields,
                                 _fill_optional=True,
                             )
                             baker.make(
@@ -472,6 +493,7 @@ class ModelBakeryDataLoader(DataLoader):
                                 storageclass=storage_class,
                                 tags=random.choice(self.tags),
                                 source_uuid=provider.uuid,
+                                **unique_fields,
                                 _fill_optional=True,
                             )
             update_method([bill.id], start_date, end_date)

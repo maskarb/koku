@@ -582,7 +582,7 @@ class OCPReportViewTest(IamTestCase):
             expected_total = cost if cost is not None else 0
         total = data.get("meta", {}).get("total", {}).get("cost", {}).get("total", {}).get("value", 0)
         self.assertNotEqual(total, Decimal(0))
-        self.assertEqual(total, expected_total)
+        self.assertAlmostEqual(total, expected_total, 6)
 
     def test_execute_query_ocp_costs_with_delta(self):
         """Test that deltas work for costs."""
