@@ -21,6 +21,7 @@ from django.db.models import DecimalField
 from django.db.models import ForeignKey
 from django.db.models.aggregates import Func
 from django.db.models.fields.json import KeyTextTransform
+from django.db.models.fields.related import RelatedField
 from django.db.models.sql.compiler import SQLDeleteCompiler
 from sqlparse import format as format_sql
 
@@ -309,6 +310,11 @@ def get_model(model_or_table_name):
     return DB_MODELS[model_or_table_name.lower()]
 
 
+def _clear_db_models():
+    with DB_MODELS_LOCK:
+        DB_MODELS.clear()
+
+
 def _count_fk_fields(model):
     num_fk = 0
     for f in model._meta.fields:
@@ -491,3 +497,64 @@ def unset_partitioned_schema_editor(schema_editor):
 
 def unset_partition_mode(apps, schema_editor):
     unset_partitioned_schema_editor(schema_editor)
+
+
+def _get_partition_name_suffix(partition_instance):
+    return partition_instance.table_name[len(partition_instance.partition_of_table_name) + 1 :]  # noqa
+
+
+def _get_partition_model_suffix(partition_instance):
+    return _get_partition_name_suffix(partition_instance).capitalize()
+
+
+def _create_partition_model(partition_instance, model=None, partition_model_name=None):
+    class _Meta:
+        db_table = partition_instance.table_name
+
+    class _PartitionInfo:
+        partition_type = partition_instance.partition_type
+        partition_cols = [c.strip() for c in partition_instance.partition_col.split(",")]
+
+    if not model:
+        model = get_model(partition_instance.partition_of_table_name)
+
+    if not partition_model_name:
+        partition_model_name = model.__name__ + _get_partition_model_suffix(partition_instance)
+
+    partition_model_attrs = {
+        "Meta": _Meta,
+        "PartitionInfo": _PartitionInfo,
+        "__module__": model.__module__,
+        "_partition_tracker": partition_instance,
+    }
+    allowed_fields = {"null", "primary_key", "default", "editable", "serialize", "db_column", "base_field"}
+
+    for field in model._meta.fields:
+        partition_field_attrs = {
+            k: v for k, v in field.db_type_parameters(transaction.get_connection()).items() if k in allowed_fields
+        }
+        if isinstance(field, RelatedField):
+            partition_field_attrs["to"] = field.related_model.__name__
+            partition_field_attrs["on_delete"] = models.DO_NOTHING
+            for rel_obj in field.related_model._meta.related_objects:
+                if rel_obj.remote_field == field:
+                    partition_field_attrs["on_delete"] = rel_obj.on_delete
+
+        partition_model_attrs[field.name] = type(field)(**partition_field_attrs)
+
+    _model = type(partition_model_name, model.__bases__, partition_model_attrs)
+    _clear_db_models()
+
+    return _model
+
+
+def get_or_create_partition_model(partition_instance):
+    model = get_model(partition_instance.partition_of_table_name)
+    partition_model_name = model.__name__ + _get_partition_model_suffix(partition_instance)
+
+    try:
+        _model = get_model(partition_model_name)
+    except KeyError:
+        _model = _create_partition_model(partition_instance, model=model, partition_model_name=partition_model_name)
+
+    return _model
