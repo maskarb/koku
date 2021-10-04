@@ -37,6 +37,7 @@ class ModelBakeryDataLoader(DataLoader):
         self.num_tag_keys = 10
         self.tag_keys = [self.faker.slug() for _ in range(self.num_tag_keys)]
         self.tags = [{key: self.faker.slug()} for key in self.tag_keys]
+        self.tag_test_tag_key = "app"
         self._populate_enabled_tag_key_table()
 
     def _get_bill_model(self, provider_type):
@@ -56,6 +57,7 @@ class ModelBakeryDataLoader(DataLoader):
             with schema_context(self.schema):
                 for key in self.tag_keys[0 : int(self.num_tag_keys / 2)]:  # noqa: E203
                     baker.make(table_name, key=key)
+                baker.make(table_name, key=self.tag_test_tag_key)
 
     def create_provider(self, provider_type, credentials, billing_source, name, linked_openshift_provider=None):
         """Create a Provider record"""
@@ -339,7 +341,7 @@ class ModelBakeryDataLoader(DataLoader):
                                 "OCPUsageLineItemDailySummary",
                                 report_period=report_period,
                                 cluster_id=cluster_id,
-                                cluster_alias=cluster_id + " Alias",
+                                cluster_alias=cluster_id,
                                 node=node_tuple[0],
                                 resource_id=node_tuple[1],
                                 namespace=namespace,
@@ -349,8 +351,8 @@ class ModelBakeryDataLoader(DataLoader):
                                 storageclass=storage_class,
                                 usage_start=start_date + timedelta(i),
                                 usage_end=start_date + timedelta(i),
-                                pod_labels=random.choice(self.tags) if data_source == "Pod" else None,
-                                volume_labels=random.choice(self.tags) if data_source == "Storage" else None,
+                                pod_labels=node_tuple[4] if data_source == "Pod" else None,
+                                volume_labels=pvc_tuple[4] if data_source == "Storage" else None,
                                 source_uuid=provider.uuid,
                                 pod_limit_cpu_core_hours=pod_limit_cpu if data_source == "Pod" else None,
                                 pod_usage_cpu_core_hours=pod_limit_cpu * random.random()
