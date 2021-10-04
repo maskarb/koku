@@ -11,7 +11,7 @@ from api.provider.models import Provider
 class TestGetModel(IamTestCase):
     def test_loader(self):
         """Test that the loader function populates the module-level dict"""
-        kdb.DB_MODELS.clear()
+        kdb._clear_db_models()
         self.assertEqual(kdb.DB_MODELS, {})
 
         kdb._load_db_models()
@@ -19,7 +19,7 @@ class TestGetModel(IamTestCase):
 
     def test_getter_calls_loader(self):
         """Test that get_model() will load the DB_MODELS dict before checking it"""
-        kdb.DB_MODELS.clear()
+        kdb._clear_db_models()
         self.assertEqual(kdb.DB_MODELS, {})
 
         p = kdb.get_model("provider")
