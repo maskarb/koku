@@ -507,7 +507,27 @@ def _get_partition_model_suffix(partition_instance):
     return _get_partition_name_suffix(partition_instance).capitalize()
 
 
+def _validate_partition_instance(partition_instance):
+    PartitionedTable = get_model("PartitionedTable")
+    if not isinstance(partition_instance, PartitionedTable):
+        if isinstance(partition_instance, type):
+            _type = partition_instance.__name__
+        else:
+            _type = type(partition_instance).__name__
+        raise TypeError(f"Argument must be of type 'PartitionedTable' not '{_type}'")
+    if not (
+        partition_instance.id is not None
+        and partition_instance.table_name
+        and partition_instance.partition_of_table_name
+    ):
+        raise ValueError("Argument nust be a valid PartitionedTable record")
+
+    return True
+
+
 def _create_partition_model(partition_instance, model=None, partition_model_name=None):
+    _validate_partition_instance(partition_instance)
+
     class _Meta:
         db_table = partition_instance.table_name
 
@@ -549,6 +569,8 @@ def _create_partition_model(partition_instance, model=None, partition_model_name
 
 
 def get_or_create_partition_model(partition_instance):
+    _validate_partition_instance(partition_instance)
+
     model = get_model(partition_instance.partition_of_table_name)
     partition_model_name = model.__name__ + _get_partition_model_suffix(partition_instance)
 

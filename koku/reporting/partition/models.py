@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import JSONField
 
-from koku.database import get_or_create_partitioin_model
+from koku.database import get_or_create_partition_model
 
 
 def validate_not_empty(value):
@@ -56,4 +56,4 @@ class PartitionedTable(models.Model):
         )
 
     def get_partition_model(self):
-        return get_or_create_partitioin_model(self)
+        return get_or_create_partition_model(self)

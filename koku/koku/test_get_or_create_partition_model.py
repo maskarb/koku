@@ -4,6 +4,7 @@
 #
 from unittest.mock import patch
 
+from django.db.models.base import ModelBase
 from tenant_schemas.utils import schema_context
 
 from . import database as kdb
@@ -51,3 +52,9 @@ class TestGetOrCreatePartitionModel(IamTestCase):
             partition_model2 = kdb.get_or_create_partition_model(partition_rec)
             cpm.assert_not_called()
             self.assertEqual(partition_model, partition_model2)
+
+    def test_partition_model_getter(self):
+        """Test that a partition model can be created from a PartitionTable instance"""
+        partition_rec = self._get_no_model_partition_record()
+        partition_model = partition_rec.get_partition_model()
+        self.assertTrue(isinstance(partition_model, ModelBase))
