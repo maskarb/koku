@@ -226,7 +226,7 @@ class CostModelViewTests(IamTestCase):
         self.fake_data["rates"][0]["tiered_rates"][0]["value"] = new_value
 
         with tenant_context(self.tenant):
-            cost_model = CostModel.objects.first()
+            cost_model = CostModel.objects.filter(uuid=self.fake_data_cost_model_uuid).first()
             url = reverse("cost-models-detail", kwargs={"uuid": cost_model.uuid})
         client = APIClient()
         response = client.put(url, self.fake_data, format="json", **self.headers)
