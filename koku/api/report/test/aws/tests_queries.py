@@ -42,7 +42,6 @@ from reporting.models import AWSComputeSummaryByRegion
 from reporting.models import AWSComputeSummaryByService
 from reporting.models import AWSCostEntryBill
 from reporting.models import AWSCostEntryLineItemDailySummary
-from reporting.models import AWSCostEntryProduct
 from reporting.models import AWSCostSummary
 from reporting.models import AWSCostSummaryByAccount
 from reporting.models import AWSCostSummaryByRegion
@@ -565,7 +564,7 @@ class AWSReportQueryTest(IamTestCase):
     def test_execute_query_without_counts(self):
         """Test execute_query without counts of unique resources."""
         with tenant_context(self.tenant):
-            instance_type = AWSCostEntryProduct.objects.first().instance_type
+            instance_type = AWSCostEntryLineItemDailySummary.objects.first().instance_type
 
         url = "?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=daily&group_by[instance_type]=*"  # noqa: E501
         query_params = self.mocked_query_params(url, AWSInstanceTypeView)

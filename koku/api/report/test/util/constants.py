@@ -59,18 +59,18 @@ GCP_SERVICES = (
 OCP_DATA_SOURCES = ("Pod", "Storage")
 # Node tuple ex ((node name, resource id, cpu, memory, volume tuple))
 OCP_NODES = (
-    ("node_1", "i-00000001", 4, 16, {"app": "mobile"}),
-    ("node_2", "i-00000002", 8, 32, {"app": "banking"}),
-    ("node_3", "i-00000003", 8, 32, {"app": "weather"}),
-    ("node_4", "i-00000004", 4, 16, {"app": "messaging"}),
-    ("node_5", "i-00000005", 8, 32, {"app": "social"}),
-    ("node_6", "i-00000006", 8, 32, {"app": "gaming"}),
+    ("node_1", "i-00000001", 4, 16, {"app": "mobile", "disabled": "Danilov"}),
+    ("node_2", "i-00000002", 8, 32, {"app": "banking", "disabled": "Villabate"}),
+    ("node_3", "i-00000003", 8, 32, {"app": "weather", "disabled": "Elbeuf"}),
+    ("node_4", "i-00000004", 4, 16, {"app": "messaging", "disabled": "Pekanbaru"}),
+    ("node_5", "i-00000005", 8, 32, {"app": "social", "disabled": "Castelfranco_Emilia"}),
+    ("node_6", "i-00000006", 8, 32, {"app": "gaming", "disabled": "Teluk_Intan"}),
 )
 OCP_PVCS = (
-    ("pvc_1", "volume_1", "bronze", 512, {"app": "mobile", "storageclass": "Ruby"}),
-    ("pvc_2", "volume_2", "silver", 128, {"app": "banking", "storageclass": "Saphire"}),
-    ("pvc_3", "volume_3", "gold", 256, {"app": "weather", "storageclass": "Pearl"}),
-    ("pvc_4", "volume_4", "platinum", 1024, {"app": "messaging", "storageclass": "Diamond"}),
-    ("pvc_5", "volume_5", "adamantium", 512, {"app": "social", "storageclass": "Emerald"}),
-    ("pvc_6", "volume_6", "vibranium", 1024, {"app": "mobile", "storageclass": "Garnet"}),
+    ("pvc_1", "volume_1", "bronze", 512, {"app": "mobile", "disabled": "Danilov", "storageclass": "Ruby"}),
+    ("pvc_2", "volume_2", "silver", 128, {"app": "banking", "disabled": "Villabate", "storageclass": "Saphire"}),
+    ("pvc_3", "volume_3", "gold", 256, {"app": "weather", "disabled": "Elbeuf", "storageclass": "Pearl"}),
+    ("pvc_4", "volume_4", "platinum", 1024, {"app": "messaging", "disabled": "Pekanbaru", "storageclass": "Diamond"}),
+    ("pvc_5", "volume_5", "adamantium", 512, {"app": "social", "disabled": "Castel_Emili", "storageclass": "Emerald"}),
+    ("pvc_6", "volume_6", "vibranium", 1024, {"app": "mobile", "disabled": "Teluk_Intan", "storageclass": "Garnet"}),
 )

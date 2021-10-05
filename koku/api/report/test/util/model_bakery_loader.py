@@ -45,7 +45,6 @@ class ModelBakeryDataLoader(DataLoader):
         super().__init__(schema, customer, num_days=num_days)
         self.faker = Faker()
         self.currency = "USD"  # self.faker.currency_code()
-        self.unit = "Hrs"
         self.num_tag_keys = 10
         self.tag_keys = [self.faker.slug() for _ in range(self.num_tag_keys)]
         self.tags = [{key: self.faker.slug()} for key in self.tag_keys]
@@ -218,7 +217,7 @@ class ModelBakeryDataLoader(DataLoader):
                             _fill_optional=True,
                         )
             AWSReportDBAccessor(self.schema).populate_tags_summary_table([bill.id], start_date, end_date)
-        refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
+        refresh_materialized_views(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True)
 
         return provider, bills
 
@@ -269,7 +268,7 @@ class ModelBakeryDataLoader(DataLoader):
                             _fill_optional=True,
                         )
             AzureReportDBAccessor(self.schema).populate_tags_summary_table([bill.id], start_date, end_date)
-        refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
+        refresh_materialized_views(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True)
         return provider, bills
 
     def load_gcp_data(self, linked_openshift_provider=None):
@@ -312,7 +311,7 @@ class ModelBakeryDataLoader(DataLoader):
                                 _fill_optional=True,
                             )
             GCPReportDBAccessor(self.schema).populate_tags_summary_table([bill.id], start_date, end_date)
-        refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
+        refresh_materialized_views(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True)
         return provider, bills
 
     def load_openshift_data(self, cluster_id, on_cloud=False):
@@ -419,10 +418,10 @@ class ModelBakeryDataLoader(DataLoader):
             OCPReportDBAccessor(self.schema).update_line_item_daily_summary_with_enabled_tags(
                 start_date, end_date, [report_period.id]
             )
-            update_cost_model_costs.s(
+            update_cost_model_costs(
                 self.schema, provider.uuid, start_date, end_date, tracing_id="12345", synchronous=True
-            ).apply()
-        refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
+            )
+        refresh_materialized_views(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True)
         return provider, report_periods
 
     def load_openshift_on_cloud_data(self, provider_type, cluster_id, bills, report_periods):
@@ -498,4 +497,4 @@ class ModelBakeryDataLoader(DataLoader):
                             )
             update_method([bill.id], start_date, end_date)
 
-        refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
+        refresh_materialized_views(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True)
