@@ -441,7 +441,7 @@ services:
     ports:
       - 3001:3000
     depends_on:
-        - db
+      - db
 
   koku-rabbit:
     container_name: koku_rabbit
@@ -458,6 +458,7 @@ services:
     image: unleashorg/unleash-server:3.9  # 3.9 to match clowder
     environment:
       - AUTH_ENABLE_API_TOKEN=true
+      - UNLEASH_API_TOKEN=56907a2fa53c1d16101d509a10b78e36190b0f918d9f122d
       - CHECK_VERSION=false
       - DATABASE_HOST=db
       - DATABASE_NAME=unleash
@@ -471,3 +472,17 @@ services:
       - 4242:4242
     volumes:
       - './.unleash:/.unleash'
+    depends_on:
+      - db
+
+  unleash-proxy:
+    container_name: koku-unleash-proxy
+    image: unleashorg/unleash-proxy:latest
+    environment:
+      - UNLEASH_PROXY_SECRETS=some-secret
+      - UNLEASH_URL=http://unleash:4242/api
+      - UNLEASH_API_TOKEN=56907a2fa53c1d16101d509a10b78e36190b0f918d9f122d
+    ports:
+      - 3000:3000
+    depends_on:
+      - unleash

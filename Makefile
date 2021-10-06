@@ -385,6 +385,17 @@ docker-up-db:
     done
 	@echo ' PostgreSQL is available!'
 
+docker-up-unleash:
+	$(DOCKER_COMPOSE) up -d unleash
+	@until curl -s http://localhost:4242/health -H "Authorization: some-secret" ; do \
+	    printf '.'; \
+	    sleep 0.5 ; \
+    done
+	@echo ' Unleash is available!'
+
+docker-up-unleash-proxy: docker-up-db docker-up-unleash
+	$(DOCKER_COMPOSE) up -d unleash-proxy
+
 docker-up-db-monitor:
 	$(DOCKER_COMPOSE) up --build -d grafana
 	@echo "Monitor is up at localhost:3001  User=admin  Password=admin12"
