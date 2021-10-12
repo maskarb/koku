@@ -107,7 +107,7 @@ class AWSTagQueryHandlerTest(IamTestCase):
 
     def test_get_tags_for_key_filter(self):
         """Test that the execute query runs properly with key query."""
-        key = "version"
+        key = "app"
         url = f"?filter[key]={key}"
         query_params = self.mocked_query_params(url, AWSTagView)
         handler = AWSTagQueryHandler(query_params)
@@ -117,12 +117,14 @@ class AWSTagQueryHandlerTest(IamTestCase):
         expected = {"key": key, "values": tag_values}
         result = handler.get_tags()
         self.assertEqual(result[0].get("key"), expected.get("key"))
-        self.assertEqual(sorted(result[0].get("values")), sorted(expected.get("values")))
+        self.assertEqual(sorted(result[0].get("values") or [0]), sorted(expected.get("values") or [1]))
 
     def test_get_tag_values_for_value_filter(self):
         """Test that the execute query runs properly with value query."""
-        key = "version"
-        value = "prod"
+        key = "app"
+        with tenant_context(self.tenant):
+            tag = AWSTagsValues.objects.filter(key__exact=key).values("value").first()
+        value = tag.get("value")
         url = f"?filter[value]={value}"
         query_params = self.mocked_query_params(url, AWSTagView)
         handler = AWSTagQueryHandler(query_params)
@@ -133,13 +135,15 @@ class AWSTagQueryHandlerTest(IamTestCase):
         expected = {"key": key, "values": tag_values}
         result = handler.get_tag_values()
         self.assertEqual(result[0].get("key"), expected.get("key"))
-        self.assertEqual(sorted(result[0].get("values")), sorted(expected.get("values")))
+        self.assertEqual(sorted(result[0].get("values") or [0]), sorted(expected.get("values") or [1]))
 
     def test_get_tag_values_for_value_filter_partial_match(self):
         """Test that the execute query runs properly with value query."""
-        key = "version"
-        value = "a"
-        url = f"/version/?filter[value]={value}"
+        key = "app"
+        with tenant_context(self.tenant):
+            tag = AWSTagsValues.objects.filter(key__exact=key).values("value").first()
+        value = tag.get("value")[0]  # get first letter of value
+        url = f"/{key}/?filter[value]={value}"
         query_params = self.mocked_query_params(url, AWSTagView)
         # the mocked query parameters dont include the key from the url so it needs to be added
         query_params.kwargs = {"key": key}
@@ -152,4 +156,4 @@ class AWSTagQueryHandlerTest(IamTestCase):
         expected = {"key": key, "values": tag_values}
         result = handler.get_tag_values()
         self.assertEqual(result[0].get("key"), expected.get("key"))
-        self.assertEqual(sorted(result[0].get("values")), sorted(expected.get("values")))
+        self.assertEqual(sorted(result[0].get("values") or [0]), sorted(expected.get("values") or [1]))

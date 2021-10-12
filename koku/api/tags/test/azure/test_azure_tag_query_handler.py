@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 """Test the Report Queries."""
+from unittest.mock import patch
+
 from tenant_schemas.utils import tenant_context
 
 from api.functions import JSONBObjectKeys
@@ -12,6 +14,94 @@ from api.tags.azure.view import AzureTagView
 from reporting.models import AzureCostEntryLineItemDailySummary
 from reporting.models import AzureTagsSummary
 from reporting.provider.azure.models import AzureTagsValues
+
+
+class AzureTagMergingQueryHandlerTest(IamTestCase):
+    """Tests for the AzureTagQueryHandler."""
+
+    def test_merge_tags(self):
+        """Test the _merge_tags functionality."""
+        url = "?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=monthly"
+        query_params = self.mocked_query_params(url, AzureTagView)
+
+        tagHandler = AzureTagQueryHandler(query_params)
+
+        # Test no source type
+        final = []
+        source = {}
+        qs1 = [("ms-resource-usage", ["azure-cloud-shell"]), ("project", ["p1", "p2"]), ("cost", ["management"])]
+        tag_keys = tagHandler._convert_to_dict(qs1)
+        expected_dikt = {
+            "ms-resource-usage": {"key": "ms-resource-usage", "values": ["azure-cloud-shell"]},
+            "project": {"key": "project", "values": ["p1", "p2"]},
+            "cost": {"key": "cost", "values": ["management"]},
+        }
+        self.assertEqual(tag_keys, expected_dikt)
+
+        expected_1 = [
+            {"key": "ms-resource-usage", "values": ["azure-cloud-shell"]},
+            {"key": "project", "values": ["p1", "p2"]},
+            {"key": "cost", "values": ["management"]},
+        ]
+        tagHandler.append_to_final_data_without_type(final, tag_keys)
+        self.assertEqual(final, expected_1)
+
+        # Test with source type
+        final = []
+        source = {"type": "storage"}
+        tagHandler.append_to_final_data_with_type(final, tag_keys, source)
+        expected_2 = [
+            {"key": "ms-resource-usage", "values": ["azure-cloud-shell"], "type": "storage"},
+            {"key": "project", "values": ["p1", "p2"], "type": "storage"},
+            {"key": "cost", "values": ["management"], "type": "storage"},
+        ]
+        self.assertEqual(final, expected_2)
+
+        final = []
+        tagHandler.append_to_final_data_without_type(final, tag_keys)
+        tagHandler.append_to_final_data_with_type(final, tag_keys, source)
+
+        expected_3 = [
+            {"key": "ms-resource-usage", "values": ["azure-cloud-shell"]},
+            {"key": "project", "values": ["p1", "p2"]},
+            {"key": "cost", "values": ["management"]},
+            {"key": "ms-resource-usage", "values": ["azure-cloud-shell"], "type": "storage"},
+            {"key": "project", "values": ["p1", "p2"], "type": "storage"},
+            {"key": "cost", "values": ["management"], "type": "storage"},
+        ]
+        self.assertEqual(final, expected_3)
+
+        qs2 = [("ms-resource-usage", ["azure-cloud-shell2"]), ("project", ["p1", "p3"])]
+        tag_keys2 = tagHandler._convert_to_dict(qs2)
+        expected_tag_keys2 = {
+            "ms-resource-usage": {"key": "ms-resource-usage", "values": ["azure-cloud-shell2"]},
+            "project": {"key": "project", "values": ["p1", "p3"]},
+        }
+        self.assertEqual(tag_keys2, expected_tag_keys2)
+
+        tagHandler.append_to_final_data_without_type(final, tag_keys2)
+        expected_4 = [
+            {"key": "ms-resource-usage", "values": ["azure-cloud-shell", "azure-cloud-shell2"]},
+            {"key": "project", "values": ["p1", "p2", "p1", "p3"]},
+            {"key": "cost", "values": ["management"]},
+            {"key": "ms-resource-usage", "values": ["azure-cloud-shell"], "type": "storage"},
+            {"key": "project", "values": ["p1", "p2"], "type": "storage"},
+            {"key": "cost", "values": ["management"], "type": "storage"},
+        ]
+        self.assertEqual(final, expected_4)
+
+        with patch("api.tags.azure.queries.AzureTagQueryHandler.order_direction", return_value="not-default"):
+            final = tagHandler.deduplicate_and_sort(final)
+        expected_5 = [
+            {"key": "ms-resource-usage", "values": ["azure-cloud-shell", "azure-cloud-shell2"]},
+            {"key": "project", "values": ["p1", "p2", "p3"]},
+            {"key": "cost", "values": ["management"]},
+            {"key": "ms-resource-usage", "values": ["azure-cloud-shell"], "type": "storage"},
+            {"key": "project", "values": ["p1", "p2"], "type": "storage"},
+            {"key": "cost", "values": ["management"], "type": "storage"},
+        ]
+
+        self.assertEqual(final, expected_5)
 
 
 class AzureTagQueryHandlerTest(IamTestCase):
@@ -142,7 +232,7 @@ class AzureTagQueryHandlerTest(IamTestCase):
 
     def test_get_tags_for_key_filter(self):
         """Test that get tags runs properly with key query."""
-        key = "version"
+        key = "app"
         url = f"?filter[key]={key}"
         query_params = self.mocked_query_params(url, AzureTagView)
         handler = AzureTagQueryHandler(query_params)
@@ -152,12 +242,14 @@ class AzureTagQueryHandlerTest(IamTestCase):
         expected = {"key": key, "values": tag_values}
         result = handler.get_tags()
         self.assertEqual(result[0].get("key"), expected.get("key"))
-        self.assertEqual(sorted(result[0].get("values")), sorted(expected.get("values")))
+        self.assertEqual(sorted(result[0].get("values") or [0]), sorted(expected.get("values") or [1]))
 
     def test_get_tag_values_for_value_filter(self):
         """Test that get tag values runs properly with value query."""
-        key = "version"
-        value = "Andromeda"
+        key = "app"
+        with tenant_context(self.tenant):
+            tag = AzureTagsValues.objects.filter(key__exact=key).values("value").first()
+        value = tag.get("value")
         url = f"?filter[value]={value}"
         query_params = self.mocked_query_params(url, AzureTagView)
         handler = AzureTagQueryHandler(query_params)
@@ -168,13 +260,15 @@ class AzureTagQueryHandlerTest(IamTestCase):
         expected = {"key": key, "values": tag_values}
         result = handler.get_tag_values()
         self.assertEqual(result[0].get("key"), expected.get("key"))
-        self.assertEqual(sorted(result[0].get("values")), sorted(expected.get("values")))
+        self.assertEqual(sorted(result[0].get("values") or [0]), sorted(expected.get("values") or [1]))
 
     def test_get_tag_values_for_value_filter_partial_match(self):
         """Test that the execute query runs properly with value query."""
-        key = "version"
-        value = "a"
-        url = f"/version/?filter[value]={value}"
+        key = "app"
+        with tenant_context(self.tenant):
+            tag = AzureTagsValues.objects.filter(key__exact=key).values("value").first()
+        value = tag.get("value")[0]  # get first letter of value
+        url = f"/{key}/?filter[value]={value}"
         query_params = self.mocked_query_params(url, AzureTagView)
         # the mocked query parameters dont include the key from the url so it needs to be added
         query_params.kwargs = {"key": key}
@@ -187,4 +281,4 @@ class AzureTagQueryHandlerTest(IamTestCase):
         expected = {"key": key, "values": tag_values}
         result = handler.get_tag_values()
         self.assertEqual(result[0].get("key"), expected.get("key"))
-        self.assertEqual(sorted(result[0].get("values")), sorted(expected.get("values")))
+        self.assertEqual(sorted(result[0].get("values") or [0]), sorted(expected.get("values") or [1]))

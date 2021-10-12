@@ -147,8 +147,8 @@ class OCPReportQueryHandlerTest(IamTestCase):
             cap_data = query.values(*query_group_by).annotate(**annotations)
             for entry in cap_data:
                 cluster_id = entry.get("cluster_id", "")
-                capacity_by_cluster[cluster_id] += entry.get(cap_key, 0)
-                total_capacity += entry.get(cap_key, 0)
+                capacity_by_cluster[cluster_id] += entry.get(cap_key) or 0
+                total_capacity += entry.get(cap_key) or 0
 
         for entry in query_data.get("data", []):
             for cluster in entry.get("clusters", []):
@@ -179,10 +179,10 @@ class OCPReportQueryHandlerTest(IamTestCase):
             cap_data = query.values(*query_group_by).annotate(**annotations)
             for entry in cap_data:
                 date = handler.date_to_string(entry.get("usage_start"))
-                daily_capacity[date] += entry.get(cap_key, 0)
+                daily_capacity[date] += entry.get(cap_key) or 0
             cap_data = query.values(*query_group_by).annotate(**annotations)
             for entry in cap_data:
-                total_capacity += entry.get(cap_key, 0)
+                total_capacity += entry.get(cap_key) or 0
 
         self.assertEqual(query_data.get("total", {}).get("capacity", {}).get("value"), total_capacity)
         for entry in query_data.get("data", []):
@@ -217,10 +217,10 @@ class OCPReportQueryHandlerTest(IamTestCase):
                 date = handler.date_to_string(entry.get("usage_start"))
                 cluster_id = entry.get("cluster_id", "")
                 if cluster_id in daily_capacity_by_cluster[date]:
-                    daily_capacity_by_cluster[date][cluster_id] += entry.get(cap_key, 0)
+                    daily_capacity_by_cluster[date][cluster_id] += entry.get(cap_key) or 0
                 else:
-                    daily_capacity_by_cluster[date][cluster_id] = entry.get(cap_key, 0)
-                total_capacity += entry.get(cap_key, 0)
+                    daily_capacity_by_cluster[date][cluster_id] = entry.get(cap_key) or 0
+                total_capacity += entry.get(cap_key) or 0
 
         for entry in query_data.get("data", []):
             date = entry.get("date")

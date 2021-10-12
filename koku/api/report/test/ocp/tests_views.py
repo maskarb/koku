@@ -1334,7 +1334,7 @@ class OCPReportViewTest(IamTestCase):
         """Test that data is grouped by tag key and limited."""
         client = APIClient()
         tag_url = reverse("openshift-tags")
-        tag_url = tag_url + "?filter[time_scope_value]=-2&key_only=True&filter[enabled]=false"
+        tag_url = tag_url + "?filter[time_scope_value]=-2&key_only=True&filter[enabled]=true"
         response = client.get(tag_url, **self.headers)
         tag_keys = response.data.get("data", [])
         tag_key = tag_keys[0]
@@ -1354,6 +1354,7 @@ class OCPReportViewTest(IamTestCase):
 
         data = response.json()
         data = data.get("data", [])
+        self.assertTrue(data[0].get(tag_key_plural), "groupby tag did not return any data")
         previous_tag_usage = data[0].get(tag_key_plural, [])[0].get("values", [{}])[0].get("usage", {}).get("value", 0)
         for entry in data[0].get(tag_key_plural, []):
             current_tag_usage = entry.get("values", [{}])[0].get("usage", {}).get("value", 0)

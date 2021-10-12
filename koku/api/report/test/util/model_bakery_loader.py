@@ -47,7 +47,7 @@ class ModelBakeryDataLoader(DataLoader):
         self.currency = "USD"  # self.faker.currency_code()
         self.num_tag_keys = 10
         self.tag_keys = [self.faker.slug() for _ in range(self.num_tag_keys)]
-        self.tags = [{key: self.faker.slug()} for key in self.tag_keys]
+        self.tags = [{key: self.faker.slug()} for key in self.tag_keys] + [{"app": self.faker.slug()}]
         self.tag_test_tag_key = "app"
         self._populate_enabled_tag_key_table()
 
@@ -66,8 +66,6 @@ class ModelBakeryDataLoader(DataLoader):
         """Insert records for our tag keys."""
         for table_name in ("AWSEnabledTagKeys", "AzureEnabledTagKeys", "GCPEnabledTagKeys", "OCPEnabledTagKeys"):
             with schema_context(self.schema):
-                for key in self.tag_keys[0 : int(self.num_tag_keys / 2)]:  # noqa: E203
-                    baker.make(table_name, key=key)
                 baker.make(table_name, key=self.tag_test_tag_key)
 
     def create_provider(self, provider_type, credentials, billing_source, name, linked_openshift_provider=None):

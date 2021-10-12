@@ -226,8 +226,7 @@ class OCPTagQueryHandlerTest(IamTestCase):
 
     def test_get_tags_for_key_filter(self):
         """Test that get tags runs properly with key query."""
-        with tenant_context(self.tenant):
-            key = OCPEnabledTagKeys.objects.first().key
+        key = "app"
         url = f"?filter[key]={key}"
         query_params = self.mocked_query_params(url, OCPTagView)
         handler = OCPTagQueryHandler(query_params)
@@ -235,20 +234,22 @@ class OCPTagQueryHandlerTest(IamTestCase):
             storage_tags = (
                 OCPStorageVolumeLabelSummary.objects.filter(key__icontains=key).values("values").distinct().all()
             )
-            storage_values = [value for tag in storage_tags for value in tag.get("values")]
+            storage_values = {value for tag in storage_tags for value in tag.get("values")}
             usage_tags = OCPUsagePodLabelSummary.objects.filter(key__icontains=key).values("values").distinct().all()
-            usage_values = [value for tag in usage_tags for value in tag.get("values")]
+            usage_values = {value for tag in usage_tags for value in tag.get("values")}
             # remove duplicates from the values
-            tag_values = list(dict.fromkeys(storage_values + usage_values))
+            tag_values = list(set.union(storage_values, usage_values))
         expected = {"key": key, "values": tag_values}
         result = handler.get_tags()
         self.assertEqual(result[0].get("key"), expected.get("key"))
-        self.assertEqual(sorted(result[0].get("values")), sorted(expected.get("values")))
+        self.assertEqual(sorted(result[0].get("values") or [0]), sorted(expected.get("values") or [1]))
 
     def test_get_tag_values_for_value_filter(self):
         """Test that get tag values runs properly with value query."""
-        key = "version"
-        value = "Andromeda"
+        key = "app"
+        with tenant_context(self.tenant):
+            tag = OCPTagsValues.objects.filter(key__exact=key).values("value").first()
+        value = tag.get("value")
         url = f"?filter[value]={value}"
         query_params = self.mocked_query_params(url, OCPTagView)
         handler = OCPTagQueryHandler(query_params)
@@ -261,13 +262,15 @@ class OCPTagQueryHandlerTest(IamTestCase):
         expected = {"key": key, "values": tag_values}
         result = handler.get_tag_values()
         self.assertEqual(result[0].get("key"), expected.get("key"))
-        self.assertEqual(sorted(result[0].get("values")), sorted(expected.get("values")))
+        self.assertEqual(sorted(result[0].get("values") or [0]), sorted(expected.get("values") or [1]))
 
     def test_get_tag_values_for_value_filter_partial_match(self):
         """Test that the execute query runs properly with value query."""
-        key = "version"
-        value = "a"
-        url = f"/version/?filter[value]={value}"
+        key = "app"
+        with tenant_context(self.tenant):
+            tag = OCPTagsValues.objects.filter(key__exact=key).values("value").first()
+        value = tag.get("value")[0]  # get first letter of value
+        url = f"/{key}/?filter[value]={value}"
         query_params = self.mocked_query_params(url, OCPTagView)
         # the mocked query parameters dont include the key from the url so it needs to be added
         query_params.kwargs = {"key": key}
@@ -286,14 +289,16 @@ class OCPTagQueryHandlerTest(IamTestCase):
         expected = {"key": key, "values": tag_values}
         result = handler.get_tag_values()
         self.assertEqual(result[0].get("key"), expected.get("key"))
-        self.assertEqual(sorted(result[0].get("values")), sorted(expected.get("values")))
+        self.assertEqual(sorted(result[0].get("values") or [0]), sorted(expected.get("values") or [1]))
 
     @RbacPermissions({"openshift.node": {"read": ["aws_compute1"]}})
     def test_get_tag_values_for_value_filter_RBAC_node(self):
         """Test that the execute query runs properly with value query and an RBAC restriction on node."""
         key = "app"
-        value = "c"
-        url = f"/app/?filter[value]={value}"
+        with tenant_context(self.tenant):
+            tag = OCPTagsValues.objects.filter(key__exact=key).values("value").first()
+        value = tag.get("value")[0]  # get first letter of value
+        url = f"/{key}/?filter[value]={value}"
         query_params = self.mocked_query_params(url, OCPTagView)
         # the mocked query parameters dont include the key from the url so it needs to be added
         query_params.kwargs = {"key": key}
@@ -307,14 +312,16 @@ class OCPTagQueryHandlerTest(IamTestCase):
         expected = {"key": key, "values": tag_values}
         result = handler.get_tag_values()
         self.assertEqual(result[0].get("key"), expected.get("key"))
-        self.assertEqual(sorted(result[0].get("values")), sorted(expected.get("values")))
+        self.assertEqual(sorted(result[0].get("values") or [0]), sorted(expected.get("values") or [1]))
 
     @RbacPermissions({"openshift.cluster": {"read": ["my-ocp-cluster-2"]}})
     def test_get_tag_values_for_value_filter_RBAC_cluster(self):
         """Test that the execute query runs properly with value query and an RBAC restriction on cluster."""
         key = "app"
-        value = "b"
-        url = f"/app/?filter[value]={value}"
+        with tenant_context(self.tenant):
+            tag = OCPTagsValues.objects.filter(key__exact=key).values("value").first()
+        value = tag.get("value")[0]  # get first letter of value
+        url = f"/{key}/?filter[value]={value}"
         query_params = self.mocked_query_params(url, OCPTagView)
         # the mocked query parameters dont include the key from the url so it needs to be added
         query_params.kwargs = {"key": key}
@@ -328,13 +335,15 @@ class OCPTagQueryHandlerTest(IamTestCase):
         expected = {"key": key, "values": tag_values}
         result = handler.get_tag_values()
         self.assertEqual(result[0].get("key"), expected.get("key"))
-        self.assertEqual(sorted(result[0].get("values")), sorted(expected.get("values")))
+        self.assertEqual(sorted(result[0].get("values") or [0]), sorted(expected.get("values") or [1]))
 
     def test_set_access_filters(self):
         """Test that the execute query runs properly with value query and an RBAC restriction on cluster."""
         key = "app"
-        value = "b"
-        url = f"/app/?filter[value]={value}"
+        with tenant_context(self.tenant):
+            tag = OCPTagsValues.objects.filter(key__exact=key).values("value").first()
+        value = tag.get("value")[0]  # get first letter of value
+        url = f"/{key}/?filter[value]={value}"
         query_params = self.mocked_query_params(url, OCPTagView)
         # the mocked query parameters dont include the key from the url so it needs to be added
         query_params.kwargs = {"key": key}
@@ -349,8 +358,10 @@ class OCPTagQueryHandlerTest(IamTestCase):
     def test_set_access_filters_with_list(self):
         """Test that the execute query runs properly with value query and an RBAC restriction on cluster."""
         key = "app"
-        value = "b"
-        url = f"/app/?filter[value]={value}"
+        with tenant_context(self.tenant):
+            tag = OCPTagsValues.objects.filter(key__exact=key).values("value").first()
+        value = tag.get("value")[0]  # get first letter of value
+        url = f"/{key}/?filter[value]={value}"
         query_params = self.mocked_query_params(url, OCPTagView)
         # the mocked query parameters dont include the key from the url so it needs to be added
         query_params.kwargs = {"key": key}
@@ -362,10 +373,10 @@ class OCPTagQueryHandlerTest(IamTestCase):
         ]
         filters = QueryFilterCollection()
         handler.set_access_filters(access, filt, filters)
-        expected = []
-        expected.append(
+        expected = [
             QueryFilter(field="report_period__cluster_id", operation="icontains", parameter=["my-ocp-cluster-2"])
-        )
+        ]
+
         expected.append(
             QueryFilter(field="report_period__cluster_alias", operation="icontains", parameter=["my-ocp-cluster-2"])
         )
