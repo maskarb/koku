@@ -4,7 +4,6 @@
 #
 """Test the Report Queries."""
 import logging
-from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
 from decimal import ROUND_HALF_UP
@@ -27,6 +26,7 @@ from api.report.azure.openshift.query_handler import OCPAzureReportQueryHandler
 from api.report.azure.openshift.view import OCPAzureCostView
 from api.report.azure.openshift.view import OCPAzureInstanceTypeView
 from api.report.azure.openshift.view import OCPAzureStorageView
+from api.report.test.util import constants
 from api.utils import DateHelper
 from api.utils import materialized_view_month_start
 from reporting.models import AzureCostEntryBill
@@ -41,25 +41,6 @@ from reporting.models import OCPAzureNetworkSummary
 from reporting.models import OCPAzureStorageSummary
 
 LOG = logging.getLogger(__name__)
-
-AZURE_SERVICES = {
-    "Bandwidth": ["Bandwidth"],
-    "Log Analytics": ["Log Analytics"],
-    "SQL Database": ["SQL DB Single Std"],
-    "Storage": [
-        "Blob Storage",
-        "Files",
-        "General Block Blob",
-        "Premium SSD Managed Disks",
-        "Queues v2",
-        "Standard Page Blob",
-        "Standard SSD Managed Disks",
-        "Storage - Bandwidth",
-        "Tables",
-    ],
-    "Virtual Machines": ["A Series", "A Series VM", "BS Series VM"],
-    "Virtual Network": ["IP Addresses"],
-}
 
 
 class OCPAzureQueryHandlerTestNoData(IamTestCase):
@@ -209,7 +190,7 @@ class OCPAzureQueryHandlerTest(IamTestCase):
 
     def test_execute_query_current_month_by_service(self):
         """Test execute_query for current month on monthly breakdown by service."""
-        valid_services = list(AZURE_SERVICES.keys())
+        valid_services = [s[0] for s in constants.AZURE_SERVICES]
         url = "?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=monthly&group_by[service_name]=*"  # noqa: E501
         query_params = self.mocked_query_params(url, OCPAzureCostView)
         handler = OCPAzureReportQueryHandler(query_params)
@@ -606,20 +587,10 @@ class OCPAzureQueryHandlerTest(IamTestCase):
         self.assertIsNotNone(data)
 
         subs = data[0].get("subscription_guids", [{}])
-        if isinstance(self.dh.this_month_start, datetime):
-            v_this_month_start = self.dh.this_month_start.date()
-        else:
-            v_this_month_start = self.dh.this_month_start
-        if isinstance(self.dh.today, datetime):
-            v_today = self.dh.today.date()
-            v_today_last_month = (self.dh.today - relativedelta(months=1)).date()
-        else:
-            v_today = self.dh.today
-            v_today_last_month = self.dh.today = relativedelta(months=1)
-        if isinstance(self.dh.last_month_start, datetime):
-            v_last_month_start = self.dh.last_month_start.date()
-        else:
-            v_last_month_start = self.dh.last_month_start
+        v_this_month_start = self.dh.this_month_start.date()
+        v_today = self.dh.today.date()
+        v_today_last_month = (self.dh.today - relativedelta(months=1)).date()
+        v_last_month_start = self.dh.last_month_start.date()
 
         for sub in subs:
             current_total = Decimal(0)
@@ -639,7 +610,7 @@ class OCPAzureQueryHandlerTest(IamTestCase):
                     usage_start__lte=v_today_last_month,
                     subscription_guid=sub.get("subscription_guid"),
                 ).aggregate(value=Sum(F("pretax_cost") + F("markup_cost")))
-                prev_total = Decimal(prev.get("value", Decimal(0)))
+                prev_total = Decimal(prev.get("value") or 0)
 
             expected_delta_value = Decimal(current_total - prev_total)
             expected_delta_percent = Decimal((current_total - prev_total) / prev_total * 100)

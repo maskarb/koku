@@ -202,6 +202,12 @@ class OCPAWSReportViewTest(IamTestCase):
                 .values(*["usage_start"])
                 .annotate(usage=Sum("usage_amount"))
             )
+            others_count = (
+                OCPAWSCostLineItemDailySummary.objects.filter(usage_start__gte=self.ten_days_ago)
+                .exclude(product_family__contains="Storage")
+                .values("product_family")
+                .distinct()
+            )
 
         totals = {total.get("usage_start").strftime("%Y-%m-%d"): total.get("usage") for total in totals}
 
@@ -209,7 +215,7 @@ class OCPAWSReportViewTest(IamTestCase):
 
         # assert the others count is correct
         meta = data.get("meta")
-        self.assertEqual(meta.get("others"), 2)
+        self.assertEqual(meta.get("others"), len(others_count) + 1)
 
         # Check if limit returns the correct number of results, and
         # that the totals add up properly

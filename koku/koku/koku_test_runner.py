@@ -14,14 +14,13 @@ from django.db import connections
 from django.test.runner import DiscoverRunner
 from django.test.utils import get_unique_databases_and_mirrors
 from scripts.insert_org_tree import UploadAwsTree
-from tenant_schemas.utils import tenant_context
 
 from api.models import Customer
 from api.models import Provider
 from api.models import Tenant
 from api.report.test.util.model_bakery_loader import ModelBakeryDataLoader
 from koku.env import ENVIRONMENT
-from reporting.models import OCPEnabledTagKeys
+
 
 GITHUB_ACTIONS = ENVIRONMENT.bool("GITHUB_ACTIONS", default=False)
 LOG = logging.getLogger(__name__)
@@ -40,11 +39,7 @@ class KokuTestRunner(DiscoverRunner):
     def setup_databases(self, **kwargs):
         """Set up database tenant schema."""
         self.keepdb = settings.KEEPDB
-        main_db = setup_databases(
-            self.verbosity, self.interactive, self.keepdb, self.debug_sql, self.parallel, **kwargs
-        )
-
-        return main_db
+        return setup_databases(self.verbosity, self.interactive, self.keepdb, self.debug_sql, self.parallel, **kwargs)
 
     @patch("koku.presto_database._execute")
     @patch("masu.database.report_db_accessor_base.ReportDBAccessorBase._execute_presto_multipart_sql_query")
@@ -140,9 +135,8 @@ def setup_databases(verbosity, interactive, keepdb=False, debug_sql=False, paral
                 if parallel > 1:
                     for index in range(parallel):
                         connection.creation.clone_test_db(suffix=str(index + 1), verbosity=verbosity, keepdb=keepdb)
-            # Configure all other connections as mirrors of the first one
             else:
-                connections[alias].creation.set_as_test_mirror(connections[first_alias].settings_dict)
+                connection.creation.set_as_test_mirror(connections[first_alias].settings_dict)
 
     # Configure the test mirrors.
     for alias, mirror_alias in mirrored_aliases.items():

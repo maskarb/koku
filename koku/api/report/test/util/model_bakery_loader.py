@@ -25,15 +25,23 @@ from masu.database.ocp_report_db_accessor import OCPReportDBAccessor
 from masu.processor.tasks import refresh_materialized_views
 from masu.processor.tasks import update_cost_model_costs
 from masu.util.aws.insert_aws_org_tree import InsertAwsOrgTree
-from reporting.provider.aws.models import AWSOrganizationalUnit
+from reporting.models import AWSAccountAlias
+from reporting.models import AWSOrganizationalUnit
 
 
 def aws_service_gen():
+    account_alias = random.choice(list(AWSAccountAlias.objects.all()))
     service = random.choice(constants.AWS_SERVICES)
-    return {"product_code": service[0], "product_family": service[2], "unit": service[4]}
+    return {
+        "product_code": service[0],
+        "product_family": service[2],
+        "unit": service[4],
+        "account_alias": account_alias,
+    }
 
 
 def azure_service_gen():
+    # subscription_guid = random.choice(list(AWSOrganizationalUnit.objects.all()))
     service = random.choice(constants.AZURE_SERVICES)
     return {"service_name": service[0], "unit_of_measure": service[2] or None}
 
@@ -61,6 +69,11 @@ class ModelBakeryDataLoader(DataLoader):
             return "GCPCostEntryBill"
         if provider_type == Provider.PROVIDER_OCP:
             return "OCPUsageReportPeriod"
+
+    def _get_cost_entry_model(self, provider_type):
+        """Return the correct model for a provider type."""
+        if provider_type in (Provider.PROVIDER_AWS, Provider.PROVIDER_AWS_LOCAL):
+            return "AWSCostEntry"
 
     def _populate_enabled_tag_key_table(self):
         """Insert records for our tag keys."""
@@ -137,6 +150,13 @@ class ModelBakeryDataLoader(DataLoader):
                 **kwargs,
             )
 
+    def create_cost_entry(self, provider_type, bill_date, bill):
+        """Create a cost entry object for the provider"""
+        with schema_context(self.schema):
+            model_str = self._get_cost_entry_model(provider_type)
+            month_end = self.dh.month_end(bill_date)
+            baker.make(model_str, interval_start=bill_date, interval_end=month_end, bill=bill)
+
     def create_cost_model(self, provider):
         """Create a cost model and map entry."""
         cost_model_json = json.loads(
@@ -163,7 +183,7 @@ class ModelBakeryDataLoader(DataLoader):
         credentials = {"role_arn": role_arn}
         billing_source = {"bucket": "test-bucket"}
         payer_account_id = "123456789"
-        create_supplemental_info = True
+        # create_supplemental_info = True
 
         provider = self.create_provider(
             provider_type, credentials, billing_source, "test-aws", linked_openshift_provider=linked_openshift_provider
@@ -175,22 +195,25 @@ class ModelBakeryDataLoader(DataLoader):
             )
             org_tree_obj.insert_tree(day_list=day_list)
 
-        with schema_context(self.schema):
-            org_units = AWSOrganizationalUnit.objects.all()
+        # with schema_context(self.schema):
+        #     org_units = AWSOrganizationalUnit.objects.all()
 
         for start_date, end_date, bill_date in self.dates:
             self.create_manifest(provider, bill_date)
             bill = self.create_bill(provider_type, provider, bill_date, payer_account_id=payer_account_id)
             bills.append(bill)
+            self.create_cost_entry(provider_type, bill_date, bill)
             with schema_context(self.schema):
-                if create_supplemental_info:
-                    alias = baker.make(
-                        "AWSAccountAlias", account_id=bill.payer_account_id, account_alias="Test Account"
-                    )
-                    create_supplemental_info = False
+                # if create_supplemental_info:
+                #     alias = baker.make(
+                #         "AWSAccountAlias", account_id=bill.payer_account_id, account_alias="Test Account"
+                #     )
+                #     create_supplemental_info = False
                 days = (end_date - start_date).days
                 for i in range(days):
                     for service in constants.AWS_SERVICES:
+                        alias = random.choice(list(AWSAccountAlias.objects.all()))
+                        org_units = AWSOrganizationalUnit.objects.filter(account_alias_id=alias.id)
                         instance = service[3]
                         region = random.choice(constants.AWS_REGIONS)
                         baker.make(
@@ -436,7 +459,7 @@ class ModelBakeryDataLoader(DataLoader):
             daily_summary_table = "OCPAzureCostLineItemDailySummary"
             project_summary_table = "OCPAzureCostLineItemProjectDailySummary"
             update_method = partial(AzureReportDBAccessor(self.schema).populate_ocp_on_azure_tags_summary_table)
-            unique_fields = {"currency": self.currency}
+            unique_fields = {"currency": self.currency, "subscription_guid": self.faker.uuid4()}
             service_gen = azure_service_gen
 
         provider = Provider.objects.filter(type=provider_type).first()

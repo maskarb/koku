@@ -20,7 +20,7 @@ class MasuTestCase(IamTestCase):
         self.customer, __ = Customer.objects.get_or_create(account_id=self.acct, schema_name=self.schema)
 
         self.aws_provider = Provider.objects.filter(type=Provider.PROVIDER_AWS_LOCAL).first()
-        self.ocp_provider = Provider.objects.filter(type=Provider.PROVIDER_OCP).first()
+        self.ocp_provider = Provider.objects.filter(type=Provider.PROVIDER_OCP, name="OCP-on-Prem").first()
         self.azure_provider = Provider.objects.get(type=Provider.PROVIDER_AZURE_LOCAL)
         self.gcp_provider = Provider.objects.get(type=Provider.PROVIDER_GCP_LOCAL)
         self.unkown_test_provider_uuid = "cabfdddb-4ed5-421e-a041-311b75daf235"
@@ -37,6 +37,9 @@ class MasuTestCase(IamTestCase):
         self.ocp_provider_uuid = str(self.ocp_provider.uuid)
         self.azure_provider_uuid = str(self.azure_provider.uuid)
         self.gcp_provider_uuid = str(self.gcp_provider.uuid)
+
+        self.ocp_on_aws_ocp_provider_uuid = str(self.ocp_on_aws_ocp_provider.uuid)
+        self.ocp_on_azure_ocp_provider_uuid = str(self.ocp_on_azure_ocp_provider.uuid)
 
         self.aws_test_provider_uuid = self.aws_provider_uuid
         self.azure_test_provider_uuid = self.azure_provider_uuid
