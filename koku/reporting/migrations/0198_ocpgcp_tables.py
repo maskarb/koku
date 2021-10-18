@@ -57,6 +57,44 @@ class Migration(migrations.Migration):
             reverse_sql="select 1",
         ),
         migrations.CreateModel(
+            name='OCPGCPCostSummaryByAccountP',
+            fields=[
+                ("uuid", models.UUIDField(default=uuid.uuid4, primary_key=True, serialize=False)),
+                ('cluster_id', models.CharField(max_length=50, null=True)),
+                ('cluster_alias', models.CharField(max_length=256, null=True)),
+                ('namespace', django.contrib.postgres.fields.ArrayField(
+                    base_field=models.CharField(max_length=253), size=None)),
+                ('node', models.CharField(max_length=253, null=True)),
+                ('resource_id', models.CharField(max_length=253, null=True)),
+                ('usage_start', models.DateField()),
+                ('usage_end', models.DateField()),
+                ('account_id', models.CharField(max_length=20)),
+                ('project_id', models.CharField(max_length=256)),
+                ('project_name', models.CharField(max_length=256)),
+                ('instance_type', models.CharField(max_length=50, null=True)),
+                ('service_id', models.CharField(max_length=256, null=True)),
+                ('service_alias', models.CharField(blank=True, max_length=256, null=True)),
+                ('region', models.TextField(null=True)),
+                ('usage_amount', models.DecimalField(decimal_places=9, max_digits=24, null=True)),
+                ('unblended_cost', models.DecimalField(decimal_places=9, max_digits=24, null=True)),
+                ('markup_cost', models.DecimalField(decimal_places=9, max_digits=17, null=True)),
+                ('currency', models.TextField(null=True)),
+                ('unit', models.TextField(null=True)),
+                ('shared_projects', models.IntegerField(default=1)),
+                ('project_costs', models.JSONField(null=True)),
+                ('source_uuid', models.UUIDField(null=True)),
+                ('credit_amount',
+                 models.DecimalField(blank=True, decimal_places=9, max_digits=24, null=True)),
+            ],
+            options={
+                'db_table': 'reporting_ocpgcpcost_summary_by_account_p',
+            },
+        ),
+        migrations.RunSQL(
+            sql="ALTER TABLE reporting_ocpgcpcost_summary_by_account_p ALTER COLUMN uuid SET DEFAULT uuid_generate_v4()",
+            reverse_sql="select 1",
+        ),
+        migrations.CreateModel(
             name="OCPGCPCostLineItemProjectDailySummary",
             fields=[
                 ("uuid", models.UUIDField(default=uuid.uuid4, primary_key=True, serialize=False)),
@@ -160,6 +198,12 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(
                 null=True, on_delete=django.db.models.deletion.CASCADE, to="reporting.ocpusagereportperiod"
             ),
+        ),
+        migrations.AddField(
+            model_name='ocpgcpcostsummarybyaccountp',
+            name='report_period',
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE,
+                                    to='reporting.ocpusagereportperiod'),
         ),
         migrations.AddField(
             model_name="ocpgcpcostlineitemdailysummary",

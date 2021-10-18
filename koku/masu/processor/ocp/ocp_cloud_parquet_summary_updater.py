@@ -209,11 +209,14 @@ class OCPCloudParquetReportSummaryUpdater(OCPCloudReportSummaryUpdater):
         gcp_bills = gcp_get_bills_from_provider(gcp_provider_uuid, self._schema, start_date, end_date)
         with schema_context(self._schema):
             self._handle_partitions(
-                ("reporting_ocpgcpcostlineitem_daily_summary", "reporting_ocpgcpcostlineitem_project_daily_summary"),
+                (
+                    "reporting_ocpgcpcostlineitem_daily_summary",
+                    "reporting_ocpgcpcostlineitem_project_daily_summary",
+                    "reporting_ocpgcpcost_summary_by_account_p"
+                ),
                 start_date,
                 end_date,
             )
-
             gcp_bill_ids = [str(bill.id) for bill in gcp_bills]
             current_gcp_bill_id = gcp_bills.first().id if gcp_bills else None
             current_ocp_report_period_id = report_period.id
@@ -247,6 +250,17 @@ class OCPCloudParquetReportSummaryUpdater(OCPCloudReportSummaryUpdater):
                     gcp_provider_uuid,
                     current_ocp_report_period_id,
                     current_gcp_bill_id,
+                    markup_value,
+                    distribution,
+                )
+                accessor.populate_ocp_on_gcp_cost_summary_by_account_presto(
+                    start,
+                    end,
+                    openshift_provider_uuid,
+                    cluster_id,
+                    gcp_provider_uuid,
+                    current_ocp_report_period_id,
+                    # current_gcp_bill_id,
                     markup_value,
                     distribution,
                 )

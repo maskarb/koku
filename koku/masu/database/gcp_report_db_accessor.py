@@ -479,6 +479,54 @@ class GCPReportDBAccessor(ReportDBAccessorBase):
         }
         self._execute_presto_multipart_sql_query(self.schema, summary_sql, bind_params=summary_sql_params)
 
+    def populate_ocp_on_gcp_cost_summary_by_account_presto(
+        self,
+        start_date,
+        end_date,
+        openshift_provider_uuid,
+        cluster_id,
+        gcp_provider_uuid,
+        report_period_id,
+        # bill_id,
+        markup_value,
+        distribution,
+    ):
+        """Populate the daily cost aggregated summary for OCP on GCP.
+
+        Args:
+            start_date (datetime.date) The date to start populating the table.
+            end_date (datetime.date) The date to end on.
+
+        Returns
+            (None)
+
+        """
+        # Default to cpu distribution
+        node_column = "node_capacity_cpu_core_hours"
+        cluster_column = "cluster_capacity_cpu_core_hours"
+        if distribution == "memory":
+            node_column = "node_capacity_memory_gigabyte_hours"
+            cluster_column = "cluster_capacity_memory_gigabyte_hours"
+
+        summary_sql = pkgutil.get_data("masu.database", "presto_sql/reporting_ocpgcpcost_summary_by_account_p.sql")
+        summary_sql = summary_sql.decode("utf-8")
+        summary_sql_params = {
+            "schema": self.schema,
+            "start_date": start_date,
+            "year": start_date.strftime("%Y"),
+            "month": start_date.strftime("%m"),
+            "end_date": end_date,
+            "gcp_source_uuid": gcp_provider_uuid,
+            "ocp_source_uuid": openshift_provider_uuid,
+            # "bill_id": bill_id,
+            "report_period_id": report_period_id,
+            "markup": markup_value,
+            "node_column": node_column,
+            "cluster_column": cluster_column,
+            "cluster_id": cluster_id,
+        }
+        self._execute_presto_multipart_sql_query(self.schema, summary_sql, bind_params=summary_sql_params)
+
     def get_openshift_on_cloud_matched_tags(self, gcp_bill_id, ocp_report_period_id):
         sql = pkgutil.get_data("masu.database", "sql/reporting_ocpgcp_matched_tags.sql")
         sql = sql.decode("utf-8")
