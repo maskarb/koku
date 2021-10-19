@@ -62,8 +62,6 @@ class Migration(migrations.Migration):
                 ("uuid", models.UUIDField(default=uuid.uuid4, primary_key=True, serialize=False)),
                 ('cluster_id', models.CharField(max_length=50, null=True)),
                 ('cluster_alias', models.CharField(max_length=256, null=True)),
-                ('namespace', django.contrib.postgres.fields.ArrayField(
-                    base_field=models.CharField(max_length=253), size=None)),
                 ('node', models.CharField(max_length=253, null=True)),
                 ('resource_id', models.CharField(max_length=253, null=True)),
                 ('usage_start', models.DateField()),
@@ -79,8 +77,8 @@ class Migration(migrations.Migration):
                 ('unblended_cost', models.DecimalField(decimal_places=9, max_digits=24, null=True)),
                 ('markup_cost', models.DecimalField(decimal_places=9, max_digits=17, null=True)),
                 ('currency', models.TextField(null=True)),
+                ("invoice_month", models.CharField(blank=True, max_length=256, null=True)),
                 ('unit', models.TextField(null=True)),
-                ('shared_projects', models.IntegerField(default=1)),
                 ('project_costs', models.JSONField(null=True)),
                 ('source_uuid', models.UUIDField(null=True)),
                 ('credit_amount',

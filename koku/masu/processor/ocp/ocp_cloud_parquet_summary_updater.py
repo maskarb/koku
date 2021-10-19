@@ -253,16 +253,15 @@ class OCPCloudParquetReportSummaryUpdater(OCPCloudReportSummaryUpdater):
                     markup_value,
                     distribution,
                 )
-                accessor.populate_ocp_on_gcp_cost_summary_by_account_presto(
-                    start,
-                    end,
-                    openshift_provider_uuid,
-                    cluster_id,
-                    gcp_provider_uuid,
-                    current_ocp_report_period_id,
-                    # current_gcp_bill_id,
-                    markup_value,
-                    distribution,
-                )
             accessor.back_populate_ocp_on_gcp_daily_summary_trino(start_date, end_date, current_ocp_report_period_id)
+            accessor.populate_ocp_on_gcp_cost_summary_by_account_presto(
+                start_date,
+                end_date,
+                openshift_provider_uuid,
+                cluster_id,
+                gcp_provider_uuid,
+                current_ocp_report_period_id,
+                markup_value,
+                distribution,
+            )
             accessor.populate_ocp_on_gcp_tags_summary_table(gcp_bill_ids, start_date, end_date)

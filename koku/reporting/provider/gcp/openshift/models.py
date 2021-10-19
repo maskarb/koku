@@ -290,8 +290,6 @@ class OCPGCPCostSummaryByAccountP(models.Model):
     cluster_alias = models.CharField(max_length=256, null=True)
 
     # Kubernetes objects by convention have a max name length of 253 chars
-    namespace = ArrayField(models.CharField(max_length=253, null=False))
-
     node = models.CharField(max_length=253, null=True)
 
     resource_id = models.CharField(max_length=253, null=True)
@@ -321,6 +319,8 @@ class OCPGCPCostSummaryByAccountP(models.Model):
 
     usage_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True)
 
+    invoice_month = models.CharField(max_length=256, null=True, blank=True)
+
     # Cost breakdown can be done by cluster, node, project, and pod.
     # Cluster and node cost can be determined by summing the GCP unblended_cost
     # with a GROUP BY cluster/node.
@@ -333,10 +333,6 @@ class OCPGCPCostSummaryByAccountP(models.Model):
     currency = models.TextField(null=True)
 
     unit = models.TextField(null=True)
-
-    # This is a count of the number of projects that share a GCP resource
-    # It is used to divide cost evenly among projects
-    shared_projects = models.IntegerField(null=False, default=1)
 
     # A JSON dictionary of the project cost, keyed by project/namespace name
     # See comment on pretax_cost for project cost explanation

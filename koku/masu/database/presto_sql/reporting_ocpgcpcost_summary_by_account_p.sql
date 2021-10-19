@@ -1,17 +1,16 @@
 -- Clear out old entries first
-DELETE FROM {{schema | sqlsafe}}.reporting_ocpgcpcost_summary_by_account_p
-WHERE usage_start >= {{start_date}}::date
-    AND usage_start <= {{end_date}}::date
+DELETE FROM postgres.{{schema | sqlsafe}}.reporting_ocpgcpcost_summary_by_account_p
+WHERE usage_start >= date('{{start_date | sqlsafe}}')
+    AND usage_start <= date('{{start_date | sqlsafe}}')
     AND report_period_id = {{report_period_id | sqlsafe}}
 ;
 
 -- Populate the daily aggregate line item data
-INSERT INTO {{schema | sqlsafe}}.reporting_ocpgcpcost_summary_by_account_p (
+INSERT INTO postgres.{{schema | sqlsafe}}.reporting_ocpgcpcost_summary_by_account_p (
     uuid,
     report_period_id,
     cluster_id,
     cluster_alias,
-    namespace,
     node,
     resource_id,
     usage_start,
@@ -28,15 +27,14 @@ INSERT INTO {{schema | sqlsafe}}.reporting_ocpgcpcost_summary_by_account_p (
     markup_cost,
     currency,
     unit,
-    shared_projects,
     source_uuid,
-    credit_amount
+    credit_amount,
+    invoice_month,
 )
-    SELECT uuid_generate_v4(),
+    SELECT uuid(),
         report_period_id,
         cluster_id,
         cluster_alias,
-        array_agg(DISTINCT namespace) as namespace,
         node,
         resource_id,
         usage_start,
@@ -53,10 +51,10 @@ INSERT INTO {{schema | sqlsafe}}.reporting_ocpgcpcost_summary_by_account_p (
         sum(markup_cost) as markup_cost,
         max(currency) as currency,
         max(unit) as unit,
-        count(DISTINCT namespace) as shared_projects,
         source_uuid,
-        sum(credit_amount) as credit_amount
-    FROM {{schema | sqlsafe}}.reporting_ocpgcpcostlineitem_daily_summary
+        sum(credit_amount) as credit_amount,
+        invoice_month
+    FROM postgres.{{schema | sqlsafe}}.reporting_ocpgcpcostlineitem_daily_summary
     WHERE report_period_id = {{report_period_id | sqlsafe}}
         AND usage_start >= date({{start_date}})
         AND usage_start <= date({{end_date}})
@@ -74,5 +72,6 @@ INSERT INTO {{schema | sqlsafe}}.reporting_ocpgcpcost_summary_by_account_p (
         service_id,
         service_alias,
         region,
-        source_uuid
+        source_uuid,
+        invoice_month
 ;
