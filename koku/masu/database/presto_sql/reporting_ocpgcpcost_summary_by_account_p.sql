@@ -29,7 +29,7 @@ INSERT INTO postgres.{{schema | sqlsafe}}.reporting_ocpgcpcost_summary_by_accoun
     unit,
     source_uuid,
     credit_amount,
-    invoice_month,
+    invoice_month
 )
     SELECT uuid(),
         report_period_id,
