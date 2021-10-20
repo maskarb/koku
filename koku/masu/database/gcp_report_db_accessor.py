@@ -487,7 +487,6 @@ class GCPReportDBAccessor(ReportDBAccessorBase):
         cluster_id,
         gcp_provider_uuid,
         report_period_id,
-        # bill_id,
         markup_value,
         distribution,
     ):
@@ -518,7 +517,6 @@ class GCPReportDBAccessor(ReportDBAccessorBase):
             "end_date": end_date,
             "gcp_source_uuid": gcp_provider_uuid,
             "ocp_source_uuid": openshift_provider_uuid,
-            # "bill_id": bill_id,
             "report_period_id": report_period_id,
             "markup": markup_value,
             "node_column": node_column,
