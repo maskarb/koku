@@ -32,7 +32,7 @@ INSERT INTO postgres.{{schema | sqlsafe}}.reporting_ocpgcp_storage_summary_p (
         node,
         usage_start,
         usage_end,
-        account_id
+        account_id,
         service_id,
         service_alias,
         sum(unblended_cost) as unblended_cost,

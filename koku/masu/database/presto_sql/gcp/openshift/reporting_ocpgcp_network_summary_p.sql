@@ -32,7 +32,7 @@ INSERT INTO postgres.{{schema | sqlsafe}}.reporting_ocpgcp_network_summary_p (
         node,
         usage_start,
         usage_end,
-        account_id
+        account_id,
         service_id,
         service_alias,
         sum(unblended_cost) as unblended_cost,
@@ -43,19 +43,19 @@ INSERT INTO postgres.{{schema | sqlsafe}}.reporting_ocpgcp_network_summary_p (
         invoice_month
     FROM postgres.{{schema | sqlsafe}}.reporting_ocpgcpcostlineitem_daily_summary
     -- Get data for this month or last month
-    WHERE service_alias LIKE '%Network%'
-        OR service_alias LIKE '%VPC%'
-        OR service_alias LIKE '%Firewall%'
-        OR service_alias LIKE '%Route%'
-        OR service_alias LIKE '%IP%'
-        OR service_alias LIKE '%DNS%'
-        OR service_alias LIKE '%CDN%'
-        OR service_alias LIKE '%NAT%'
-        OR service_alias LIKE '%Traffic Director%'
-        OR service_alias LIKE '%Service Discovery%'
-        OR service_alias LIKE '%Cloud Domains%'
-        OR service_alias LIKE '%Private Service Connect%'
-        OR service_alias LIKE '%Cloud Armor%'
+    WHERE service_alias LIKE '%%Network%%'
+        OR service_alias LIKE '%%VPC%%'
+        OR service_alias LIKE '%%Firewall%%'
+        OR service_alias LIKE '%%Route%%'
+        OR service_alias LIKE '%%IP%%'
+        OR service_alias LIKE '%%DNS%%'
+        OR service_alias LIKE '%%CDN%%'
+        OR service_alias LIKE '%%NAT%%'
+        OR service_alias LIKE '%%Traffic Director%%'
+        OR service_alias LIKE '%%Service Discovery%%'
+        OR service_alias LIKE '%%Cloud Domains%%'
+        OR service_alias LIKE '%%Private Service Connect%%'
+        OR service_alias LIKE '%%Cloud Armor%%'
         AND usage_start >= date('{{start_date | sqlsafe}}')
         AND usage_start <= date('{{end_date | sqlsafe}}')
         AND invoice_month = '{{year | sqlsafe}}{{month | sqlsafe}}'

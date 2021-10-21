@@ -32,7 +32,7 @@ INSERT INTO postgres.{{schema | sqlsafe}}.reporting_ocpgcp_database_summary_p (
         node,
         usage_start,
         usage_end,
-        account_id
+        account_id,
         service_id,
         service_alias,
         sum(unblended_cost) as unblended_cost,
@@ -43,13 +43,13 @@ INSERT INTO postgres.{{schema | sqlsafe}}.reporting_ocpgcp_database_summary_p (
         invoice_month
     FROM postgres.{{schema | sqlsafe}}.reporting_ocpgcpcostlineitem_daily_summary
     -- Get data for this month or last month
-    WHERE service_alias LIKE '%SQL%'
-        OR service_alias LIKE '%Spanner%'
-        OR service_alias LIKE '%Bigtable%'
-        OR service_alias LIKE '%Firestore%'
-        OR service_alias LIKE '%Firebase%'
-        OR service_alias LIKE '%Memorystore%'
-        OR service_alias LIKE '%MongoDB%'
+    WHERE service_alias LIKE '%%SQL%%'
+        OR service_alias LIKE '%%Spanner%%'
+        OR service_alias LIKE '%%Bigtable%%'
+        OR service_alias LIKE '%%Firestore%%'
+        OR service_alias LIKE '%%Firebase%%'
+        OR service_alias LIKE '%%Memorystore%%'
+        OR service_alias LIKE '%%MongoDB%%'
         AND usage_start >= date('{{start_date | sqlsafe}}')
         AND usage_start <= date('{{end_date | sqlsafe}}')
         AND invoice_month = '{{year | sqlsafe}}{{month | sqlsafe}}'
