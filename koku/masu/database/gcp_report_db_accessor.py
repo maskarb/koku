@@ -507,7 +507,391 @@ class GCPReportDBAccessor(ReportDBAccessorBase):
             node_column = "node_capacity_memory_gigabyte_hours"
             cluster_column = "cluster_capacity_memory_gigabyte_hours"
 
-        summary_sql = pkgutil.get_data("masu.database", "presto_sql/reporting_ocpgcpcost_summary_by_account_p.sql")
+        summary_sql = pkgutil.get_data(
+            "masu.database", "presto_sql/gcp/openshift/reporting_ocpgcp_cost_summary_by_account_p.sql"
+        )
+        summary_sql = summary_sql.decode("utf-8")
+        summary_sql_params = {
+            "schema": self.schema,
+            "start_date": start_date,
+            "year": start_date.strftime("%Y"),
+            "month": start_date.strftime("%m"),
+            "end_date": end_date,
+            "gcp_source_uuid": gcp_provider_uuid,
+            "ocp_source_uuid": openshift_provider_uuid,
+            "report_period_id": report_period_id,
+            "markup": markup_value,
+            "node_column": node_column,
+            "cluster_column": cluster_column,
+            "cluster_id": cluster_id,
+        }
+        self._execute_presto_multipart_sql_query(self.schema, summary_sql, bind_params=summary_sql_params)
+
+    def populate_ocp_on_gcp_cost_summary_by_gcp_project_presto(
+        self,
+        start_date,
+        end_date,
+        openshift_provider_uuid,
+        cluster_id,
+        gcp_provider_uuid,
+        report_period_id,
+        markup_value,
+        distribution,
+    ):
+        """Populate the daily cost aggregated summary for OCP on GCP.
+
+        Args:
+            start_date (datetime.date) The date to start populating the table.
+            end_date (datetime.date) The date to end on.
+
+        Returns
+            (None)
+
+        """
+        # Default to cpu distribution
+        node_column = "node_capacity_cpu_core_hours"
+        cluster_column = "cluster_capacity_cpu_core_hours"
+        if distribution == "memory":
+            node_column = "node_capacity_memory_gigabyte_hours"
+            cluster_column = "cluster_capacity_memory_gigabyte_hours"
+
+        summary_sql = pkgutil.get_data(
+            "masu.database", "presto_sql/gcp/openshift/reporting_ocpgcp_cost_summary_by_gcp_project_p.sql"
+        )
+        summary_sql = summary_sql.decode("utf-8")
+        summary_sql_params = {
+            "schema": self.schema,
+            "start_date": start_date,
+            "year": start_date.strftime("%Y"),
+            "month": start_date.strftime("%m"),
+            "end_date": end_date,
+            "gcp_source_uuid": gcp_provider_uuid,
+            "ocp_source_uuid": openshift_provider_uuid,
+            "report_period_id": report_period_id,
+            "markup": markup_value,
+            "node_column": node_column,
+            "cluster_column": cluster_column,
+            "cluster_id": cluster_id,
+        }
+        self._execute_presto_multipart_sql_query(self.schema, summary_sql, bind_params=summary_sql_params)
+
+    def populate_ocp_on_gcp_cost_summary_by_region_presto(
+        self,
+        start_date,
+        end_date,
+        openshift_provider_uuid,
+        cluster_id,
+        gcp_provider_uuid,
+        report_period_id,
+        markup_value,
+        distribution,
+    ):
+        """Populate the daily cost aggregated summary for OCP on GCP.
+
+        Args:
+            start_date (datetime.date) The date to start populating the table.
+            end_date (datetime.date) The date to end on.
+
+        Returns
+            (None)
+
+        """
+        # Default to cpu distribution
+        node_column = "node_capacity_cpu_core_hours"
+        cluster_column = "cluster_capacity_cpu_core_hours"
+        if distribution == "memory":
+            node_column = "node_capacity_memory_gigabyte_hours"
+            cluster_column = "cluster_capacity_memory_gigabyte_hours"
+
+        summary_sql = pkgutil.get_data(
+            "masu.database", "presto_sql/gcp/openshift/reporting_ocpgcp_cost_summary_by_region_p.sql"
+        )
+        summary_sql = summary_sql.decode("utf-8")
+        summary_sql_params = {
+            "schema": self.schema,
+            "start_date": start_date,
+            "year": start_date.strftime("%Y"),
+            "month": start_date.strftime("%m"),
+            "end_date": end_date,
+            "gcp_source_uuid": gcp_provider_uuid,
+            "ocp_source_uuid": openshift_provider_uuid,
+            "report_period_id": report_period_id,
+            "markup": markup_value,
+            "node_column": node_column,
+            "cluster_column": cluster_column,
+            "cluster_id": cluster_id,
+        }
+        self._execute_presto_multipart_sql_query(self.schema, summary_sql, bind_params=summary_sql_params)
+
+    def populate_ocp_on_gcp_cost_summary_by_service_presto(
+        self,
+        start_date,
+        end_date,
+        openshift_provider_uuid,
+        cluster_id,
+        gcp_provider_uuid,
+        report_period_id,
+        markup_value,
+        distribution,
+    ):
+        """Populate the daily cost aggregated summary for OCP on GCP.
+
+        Args:
+            start_date (datetime.date) The date to start populating the table.
+            end_date (datetime.date) The date to end on.
+
+        Returns
+            (None)
+
+        """
+        # Default to cpu distribution
+        node_column = "node_capacity_cpu_core_hours"
+        cluster_column = "cluster_capacity_cpu_core_hours"
+        if distribution == "memory":
+            node_column = "node_capacity_memory_gigabyte_hours"
+            cluster_column = "cluster_capacity_memory_gigabyte_hours"
+
+        summary_sql = pkgutil.get_data(
+            "masu.database", "presto_sql/gcp/openshift/reporting_ocpgcp_cost_summary_by_service_p.sql"
+        )
+        summary_sql = summary_sql.decode("utf-8")
+        summary_sql_params = {
+            "schema": self.schema,
+            "start_date": start_date,
+            "year": start_date.strftime("%Y"),
+            "month": start_date.strftime("%m"),
+            "end_date": end_date,
+            "gcp_source_uuid": gcp_provider_uuid,
+            "ocp_source_uuid": openshift_provider_uuid,
+            "report_period_id": report_period_id,
+            "markup": markup_value,
+            "node_column": node_column,
+            "cluster_column": cluster_column,
+            "cluster_id": cluster_id,
+        }
+        self._execute_presto_multipart_sql_query(self.schema, summary_sql, bind_params=summary_sql_params)
+
+    def populate_ocp_on_gcp_cost_summary_presto(
+        self,
+        start_date,
+        end_date,
+        openshift_provider_uuid,
+        cluster_id,
+        gcp_provider_uuid,
+        report_period_id,
+        markup_value,
+        distribution,
+    ):
+        """Populate the daily cost aggregated summary for OCP on GCP.
+
+        Args:
+            start_date (datetime.date) The date to start populating the table.
+            end_date (datetime.date) The date to end on.
+
+        Returns
+            (None)
+
+        """
+        # Default to cpu distribution
+        node_column = "node_capacity_cpu_core_hours"
+        cluster_column = "cluster_capacity_cpu_core_hours"
+        if distribution == "memory":
+            node_column = "node_capacity_memory_gigabyte_hours"
+            cluster_column = "cluster_capacity_memory_gigabyte_hours"
+
+        summary_sql = pkgutil.get_data("masu.database", "presto_sql/gcp/openshift/reporting_ocpgcp_cost_summary_p.sql")
+        summary_sql = summary_sql.decode("utf-8")
+        summary_sql_params = {
+            "schema": self.schema,
+            "start_date": start_date,
+            "year": start_date.strftime("%Y"),
+            "month": start_date.strftime("%m"),
+            "end_date": end_date,
+            "gcp_source_uuid": gcp_provider_uuid,
+            "ocp_source_uuid": openshift_provider_uuid,
+            "report_period_id": report_period_id,
+            "markup": markup_value,
+            "node_column": node_column,
+            "cluster_column": cluster_column,
+            "cluster_id": cluster_id,
+        }
+        self._execute_presto_multipart_sql_query(self.schema, summary_sql, bind_params=summary_sql_params)
+
+    def populate_ocp_on_gcp_compute_summary_presto(
+        self,
+        start_date,
+        end_date,
+        openshift_provider_uuid,
+        cluster_id,
+        gcp_provider_uuid,
+        report_period_id,
+        markup_value,
+        distribution,
+    ):
+        """Populate the daily cost aggregated summary for OCP on GCP.
+
+        Args:
+            start_date (datetime.date) The date to start populating the table.
+            end_date (datetime.date) The date to end on.
+
+        Returns
+            (None)
+
+        """
+        # Default to cpu distribution
+        node_column = "node_capacity_cpu_core_hours"
+        cluster_column = "cluster_capacity_cpu_core_hours"
+        if distribution == "memory":
+            node_column = "node_capacity_memory_gigabyte_hours"
+            cluster_column = "cluster_capacity_memory_gigabyte_hours"
+
+        summary_sql = pkgutil.get_data(
+            "masu.database", "presto_sql/gcp/openshift/reporting_ocpgcp_compute_summary_p.sql"
+        )
+        summary_sql = summary_sql.decode("utf-8")
+        summary_sql_params = {
+            "schema": self.schema,
+            "start_date": start_date,
+            "year": start_date.strftime("%Y"),
+            "month": start_date.strftime("%m"),
+            "end_date": end_date,
+            "gcp_source_uuid": gcp_provider_uuid,
+            "ocp_source_uuid": openshift_provider_uuid,
+            "report_period_id": report_period_id,
+            "markup": markup_value,
+            "node_column": node_column,
+            "cluster_column": cluster_column,
+            "cluster_id": cluster_id,
+        }
+        self._execute_presto_multipart_sql_query(self.schema, summary_sql, bind_params=summary_sql_params)
+
+    def populate_ocp_on_gcp_database_summary_presto(
+        self,
+        start_date,
+        end_date,
+        openshift_provider_uuid,
+        cluster_id,
+        gcp_provider_uuid,
+        report_period_id,
+        markup_value,
+        distribution,
+    ):
+        """Populate the daily cost aggregated summary for OCP on GCP.
+
+        Args:
+            start_date (datetime.date) The date to start populating the table.
+            end_date (datetime.date) The date to end on.
+
+        Returns
+            (None)
+
+        """
+        # Default to cpu distribution
+        node_column = "node_capacity_cpu_core_hours"
+        cluster_column = "cluster_capacity_cpu_core_hours"
+        if distribution == "memory":
+            node_column = "node_capacity_memory_gigabyte_hours"
+            cluster_column = "cluster_capacity_memory_gigabyte_hours"
+
+        summary_sql = pkgutil.get_data(
+            "masu.database", "presto_sql/gcp/openshift/reporting_ocpgcp_database_summary_p.sql"
+        )
+        summary_sql = summary_sql.decode("utf-8")
+        summary_sql_params = {
+            "schema": self.schema,
+            "start_date": start_date,
+            "year": start_date.strftime("%Y"),
+            "month": start_date.strftime("%m"),
+            "end_date": end_date,
+            "gcp_source_uuid": gcp_provider_uuid,
+            "ocp_source_uuid": openshift_provider_uuid,
+            "report_period_id": report_period_id,
+            "markup": markup_value,
+            "node_column": node_column,
+            "cluster_column": cluster_column,
+            "cluster_id": cluster_id,
+        }
+        self._execute_presto_multipart_sql_query(self.schema, summary_sql, bind_params=summary_sql_params)
+
+    def populate_ocp_on_gcp_network_summary_presto(
+        self,
+        start_date,
+        end_date,
+        openshift_provider_uuid,
+        cluster_id,
+        gcp_provider_uuid,
+        report_period_id,
+        markup_value,
+        distribution,
+    ):
+        """Populate the daily cost aggregated summary for OCP on GCP.
+
+        Args:
+            start_date (datetime.date) The date to start populating the table.
+            end_date (datetime.date) The date to end on.
+
+        Returns
+            (None)
+
+        """
+        # Default to cpu distribution
+        node_column = "node_capacity_cpu_core_hours"
+        cluster_column = "cluster_capacity_cpu_core_hours"
+        if distribution == "memory":
+            node_column = "node_capacity_memory_gigabyte_hours"
+            cluster_column = "cluster_capacity_memory_gigabyte_hours"
+
+        summary_sql = pkgutil.get_data(
+            "masu.database", "presto_sql/gcp/openshift/reporting_ocpgcp_network_summary_p.sql"
+        )
+        summary_sql = summary_sql.decode("utf-8")
+        summary_sql_params = {
+            "schema": self.schema,
+            "start_date": start_date,
+            "year": start_date.strftime("%Y"),
+            "month": start_date.strftime("%m"),
+            "end_date": end_date,
+            "gcp_source_uuid": gcp_provider_uuid,
+            "ocp_source_uuid": openshift_provider_uuid,
+            "report_period_id": report_period_id,
+            "markup": markup_value,
+            "node_column": node_column,
+            "cluster_column": cluster_column,
+            "cluster_id": cluster_id,
+        }
+        self._execute_presto_multipart_sql_query(self.schema, summary_sql, bind_params=summary_sql_params)
+
+    def populate_ocp_on_gcp_storage_summary_presto(
+        self,
+        start_date,
+        end_date,
+        openshift_provider_uuid,
+        cluster_id,
+        gcp_provider_uuid,
+        report_period_id,
+        markup_value,
+        distribution,
+    ):
+        """Populate the daily cost aggregated summary for OCP on GCP.
+
+        Args:
+            start_date (datetime.date) The date to start populating the table.
+            end_date (datetime.date) The date to end on.
+
+        Returns
+            (None)
+
+        """
+        # Default to cpu distribution
+        node_column = "node_capacity_cpu_core_hours"
+        cluster_column = "cluster_capacity_cpu_core_hours"
+        if distribution == "memory":
+            node_column = "node_capacity_memory_gigabyte_hours"
+            cluster_column = "cluster_capacity_memory_gigabyte_hours"
+
+        summary_sql = pkgutil.get_data(
+            "masu.database", "presto_sql/gcp/openshift/reporting_ocpgcp_storage_summary_p.sql"
+        )
         summary_sql = summary_sql.decode("utf-8")
         summary_sql_params = {
             "schema": self.schema,

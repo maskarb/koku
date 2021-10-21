@@ -212,7 +212,15 @@ class OCPCloudParquetReportSummaryUpdater(OCPCloudReportSummaryUpdater):
                 (
                     "reporting_ocpgcpcostlineitem_daily_summary",
                     "reporting_ocpgcpcostlineitem_project_daily_summary",
-                    "reporting_ocpgcpcost_summary_by_account_p"
+                    "reporting_ocpgcp_cost_summary_p",
+                    "reporting_ocpgcp_compute_summary_p",
+                    "reporting_ocpgcp_cost_summary_by_account_p",
+                    "reporting_ocpgcp_cost_summary_by_gcp_project_p",
+                    "reporting_ocpgcp_cost_summary_by_region_p",
+                    "reporting_ocpgcp_cost_summary_by_service_p",
+                    "reporting_ocpgcp_database_summary_p",
+                    "reporting_ocpgcp_network_summary_p",
+                    "reporting_ocpgcp_storage_summary_p",
                 ),
                 start_date,
                 end_date,
@@ -255,6 +263,86 @@ class OCPCloudParquetReportSummaryUpdater(OCPCloudReportSummaryUpdater):
                 )
             accessor.back_populate_ocp_on_gcp_daily_summary_trino(start_date, end_date, current_ocp_report_period_id)
             accessor.populate_ocp_on_gcp_cost_summary_by_account_presto(
+                start_date,
+                end_date,
+                openshift_provider_uuid,
+                cluster_id,
+                gcp_provider_uuid,
+                current_ocp_report_period_id,
+                markup_value,
+                distribution,
+            )
+            accessor.populate_ocp_on_gcp_cost_summary_by_gcp_project_presto(
+                start_date,
+                end_date,
+                openshift_provider_uuid,
+                cluster_id,
+                gcp_provider_uuid,
+                current_ocp_report_period_id,
+                markup_value,
+                distribution,
+            )
+            accessor.populate_ocp_on_gcp_cost_summary_by_region_presto(
+                start_date,
+                end_date,
+                openshift_provider_uuid,
+                cluster_id,
+                gcp_provider_uuid,
+                current_ocp_report_period_id,
+                markup_value,
+                distribution,
+            )
+            accessor.populate_ocp_on_gcp_cost_summary_by_service_presto(
+                start_date,
+                end_date,
+                openshift_provider_uuid,
+                cluster_id,
+                gcp_provider_uuid,
+                current_ocp_report_period_id,
+                markup_value,
+                distribution,
+            )
+            accessor.populate_ocp_on_gcp_cost_summary_presto(
+                start_date,
+                end_date,
+                openshift_provider_uuid,
+                cluster_id,
+                gcp_provider_uuid,
+                current_ocp_report_period_id,
+                markup_value,
+                distribution,
+            )
+            accessor.populate_ocp_on_gcp_compute_summary_presto(
+                start_date,
+                end_date,
+                openshift_provider_uuid,
+                cluster_id,
+                gcp_provider_uuid,
+                current_ocp_report_period_id,
+                markup_value,
+                distribution,
+            )
+            accessor.populate_ocp_on_gcp_database_summary_presto(
+                start_date,
+                end_date,
+                openshift_provider_uuid,
+                cluster_id,
+                gcp_provider_uuid,
+                current_ocp_report_period_id,
+                markup_value,
+                distribution,
+            )
+            accessor.populate_ocp_on_gcp_network_summary_presto(
+                start_date,
+                end_date,
+                openshift_provider_uuid,
+                cluster_id,
+                gcp_provider_uuid,
+                current_ocp_report_period_id,
+                markup_value,
+                distribution,
+            )
+            accessor.populate_ocp_on_gcp_storage_summary_presto(
                 start_date,
                 end_date,
                 openshift_provider_uuid,

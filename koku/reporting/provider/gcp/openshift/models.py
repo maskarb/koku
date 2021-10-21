@@ -265,79 +265,270 @@ class OCPGCPCostSummaryByAccountP(models.Model):
     class Meta:
         """Meta for OCPGCPCostSummaryByAccountP."""
 
-        db_table = "reporting_ocpgcpcost_summary_by_account_p"
+        db_table = "reporting_ocpgcp_cost_summary_by_account_p"
 
-    """ Figure this out!
-        indexes = [
-            models.Index(fields=["usage_start"], name="ocpgcp_usage_start_idx"),
-            models.Index(fields=["namespace"], name="ocpgcp_namespace_idx"),
-            models.Index(fields=["node"], name="ocpgcp_node_idx", opclasses=["varchar_pattern_ops"]),
-            models.Index(fields=["resource_id"], name="ocpgcp_resource_idx"),
-            GinIndex(fields=["tags"], name="ocpgcp_tags_idx"),
-            models.Index(fields=["project_id"], name="ocpgcp_id_idx"),
-            models.Index(fields=["project_name"], name="ocpgcp_name_idx"),
-            models.Index(fields=["service_id"], name="ocpgcp_service_id_idx"),
-            models.Index(fields=["service_alias"], name="ocpgcp_service_alias_idx"),
-        ]
-    """
     uuid = models.UUIDField(primary_key=True, default=uuid4)
-
     # OCP Fields
     report_period = models.ForeignKey("OCPUsageReportPeriod", on_delete=models.CASCADE, null=True)
-
     cluster_id = models.CharField(max_length=50, null=True)
-
     cluster_alias = models.CharField(max_length=256, null=True)
-
     # Kubernetes objects by convention have a max name length of 253 chars
     node = models.CharField(max_length=253, null=True)
-
-    resource_id = models.CharField(max_length=253, null=True)
-
     usage_start = models.DateField(null=False)
-
     usage_end = models.DateField(null=False)
-
-    # GCP Fields
-    # cost_entry_bill = models.ForeignKey("GCPCostEntryBill", on_delete=models.CASCADE)
-
     account_id = models.CharField(max_length=20)
-
-    project_id = models.CharField(max_length=256)
-
-    project_name = models.CharField(max_length=256)
-
-    instance_type = models.CharField(max_length=50, null=True)
-
-    service_id = models.CharField(max_length=256, null=True)
-
-    service_alias = models.CharField(max_length=256, null=True, blank=True)
-
-    region = models.TextField(null=True)
-
-    # tags = JSONField(null=True)
-
-    usage_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True)
-
-    invoice_month = models.CharField(max_length=256, null=True, blank=True)
-
-    # Cost breakdown can be done by cluster, node, project, and pod.
-    # Cluster and node cost can be determined by summing the GCP unblended_cost
-    # with a GROUP BY cluster/node.
-    # Project cost is a summation of pod costs with a GROUP BY project
-    # The cost of un-utilized resources = sum(unblended_cost) - sum(project_cost)
     unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
-
     markup_cost = models.DecimalField(max_digits=17, decimal_places=9, null=True)
-
     currency = models.TextField(null=True)
-
-    unit = models.TextField(null=True)
-
-    # A JSON dictionary of the project cost, keyed by project/namespace name
-    # See comment on pretax_cost for project cost explanation
-    project_costs = JSONField(null=True)
-
     source_uuid = models.UUIDField(unique=False, null=True)
+    invoice_month = models.CharField(max_length=256, null=True, blank=True)
+    credit_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True, blank=True)
 
+
+class OCPGCPCostSummaryByGCPProjectP(models.Model):
+    """A summarized view of OCP on GCP cost."""
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPGCPCostSummaryByGCPProjectP."""
+
+        db_table = "reporting_ocpgcp_cost_summary_by_gcp_project_p"
+
+    uuid = models.UUIDField(primary_key=True, default=uuid4)
+    # OCP Fields
+    report_period = models.ForeignKey("OCPUsageReportPeriod", on_delete=models.CASCADE, null=True)
+    cluster_id = models.CharField(max_length=50, null=True)
+    cluster_alias = models.CharField(max_length=256, null=True)
+    # Kubernetes objects by convention have a max name length of 253 chars
+    node = models.CharField(max_length=253, null=True)
+    usage_start = models.DateField(null=False)
+    usage_end = models.DateField(null=False)
+    project_id = models.CharField(max_length=256)
+    project_name = models.CharField(max_length=256)
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+    markup_cost = models.DecimalField(max_digits=17, decimal_places=9, null=True)
+    currency = models.TextField(null=True)
+    source_uuid = models.UUIDField(unique=False, null=True)
+    invoice_month = models.CharField(max_length=256, null=True, blank=True)
+    credit_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True, blank=True)
+
+
+class OCPGCPCostSummaryByRegionP(models.Model):
+    """A summarized view of OCP on GCP cost."""
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPGCPCostSummaryByRegionP."""
+
+        db_table = "reporting_ocpgcp_cost_summary_by_region_p"
+
+    uuid = models.UUIDField(primary_key=True, default=uuid4)
+    # OCP Fields
+    report_period = models.ForeignKey("OCPUsageReportPeriod", on_delete=models.CASCADE, null=True)
+    cluster_id = models.CharField(max_length=50, null=True)
+    cluster_alias = models.CharField(max_length=256, null=True)
+    # Kubernetes objects by convention have a max name length of 253 chars
+    node = models.CharField(max_length=253, null=True)
+    usage_start = models.DateField(null=False)
+    usage_end = models.DateField(null=False)
+    account_id = models.CharField(max_length=50, null=False)
+    region = models.TextField(null=True)
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+    markup_cost = models.DecimalField(max_digits=17, decimal_places=9, null=True)
+    currency = models.TextField(null=True)
+    source_uuid = models.UUIDField(unique=False, null=True)
+    invoice_month = models.CharField(max_length=256, null=True, blank=True)
+    credit_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True, blank=True)
+
+
+class OCPGCPCostSummaryByServiceP(models.Model):
+    """A summarized view of OCP on GCP cost."""
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPGCPCostSummaryByServiceP."""
+
+        db_table = "reporting_ocpgcp_cost_summary_by_service_p"
+
+    uuid = models.UUIDField(primary_key=True, default=uuid4)
+    # OCP Fields
+    report_period = models.ForeignKey("OCPUsageReportPeriod", on_delete=models.CASCADE, null=True)
+    cluster_id = models.CharField(max_length=50, null=True)
+    cluster_alias = models.CharField(max_length=256, null=True)
+    # Kubernetes objects by convention have a max name length of 253 chars
+    node = models.CharField(max_length=253, null=True)
+    usage_start = models.DateField(null=False)
+    usage_end = models.DateField(null=False)
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+    markup_cost = models.DecimalField(max_digits=17, decimal_places=9, null=True)
+    currency = models.TextField(null=True)
+    account_id = models.CharField(max_length=50, null=False)
+    source_uuid = models.UUIDField(unique=False, null=True)
+    service_id = models.CharField(max_length=256, null=True)
+    service_alias = models.CharField(max_length=256, null=True, blank=True)
+    invoice_month = models.CharField(max_length=256, null=True, blank=True)
+    credit_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True, blank=True)
+
+
+class OCPGCPCostSummaryP(models.Model):
+    """A summarized view of OCP on GCP cost."""
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPGCPCostSummaryByServiceP."""
+
+        db_table = "reporting_ocpgcp_cost_summary_p"
+
+    uuid = models.UUIDField(primary_key=True, default=uuid4)
+    # OCP Fields
+    report_period = models.ForeignKey("OCPUsageReportPeriod", on_delete=models.CASCADE, null=True)
+    cluster_id = models.CharField(max_length=50, null=True)
+    cluster_alias = models.CharField(max_length=256, null=True)
+    # Kubernetes objects by convention have a max name length of 253 chars
+    node = models.CharField(max_length=253, null=True)
+    usage_start = models.DateField(null=False)
+    usage_end = models.DateField(null=False)
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+    markup_cost = models.DecimalField(max_digits=17, decimal_places=9, null=True)
+    currency = models.TextField(null=True)
+    source_uuid = models.UUIDField(unique=False, null=True)
+    invoice_month = models.CharField(max_length=256, null=True, blank=True)
+    credit_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True, blank=True)
+
+
+class OCPGCPComputeSummaryP(models.Model):
+    """A summarized view of OCP on GCP cost."""
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPGCPCostSummaryByServiceP."""
+
+        db_table = "reporting_ocpgcp_compute_summary_p"
+
+    uuid = models.UUIDField(primary_key=True, default=uuid4)
+    # OCP Fields
+    report_period = models.ForeignKey("OCPUsageReportPeriod", on_delete=models.CASCADE, null=True)
+    cluster_id = models.CharField(max_length=50, null=True)
+    cluster_alias = models.CharField(max_length=256, null=True)
+    # Kubernetes objects by convention have a max name length of 253 chars
+    node = models.CharField(max_length=253, null=True)
+    usage_start = models.DateField(null=False)
+    usage_end = models.DateField(null=False)
+    instance_type = models.CharField(max_length=50, null=True)
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+    markup_cost = models.DecimalField(max_digits=17, decimal_places=9, null=True)
+    currency = models.TextField(null=True)
+    source_uuid = models.UUIDField(unique=False, null=True)
+    invoice_month = models.CharField(max_length=256, null=True, blank=True)
+    credit_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True, blank=True)
+
+
+class OCPGCPDatabaseSummaryP(models.Model):
+    """A summarized view of OCP on GCP cost."""
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPGCPCostSummaryByServiceP."""
+
+        db_table = "reporting_ocpgcp_database_summary_p"
+
+    uuid = models.UUIDField(primary_key=True, default=uuid4)
+    # OCP Fields
+    report_period = models.ForeignKey("OCPUsageReportPeriod", on_delete=models.CASCADE, null=True)
+    cluster_id = models.CharField(max_length=50, null=True)
+    cluster_alias = models.CharField(max_length=256, null=True)
+    # Kubernetes objects by convention have a max name length of 253 chars
+    node = models.CharField(max_length=253, null=True)
+    usage_start = models.DateField(null=False)
+    usage_end = models.DateField(null=False)
+    account_id = models.CharField(max_length=50, null=False)
+    service_id = models.CharField(max_length=256, null=True)
+    service_alias = models.CharField(max_length=256, null=True, blank=True)
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+    markup_cost = models.DecimalField(max_digits=17, decimal_places=9, null=True)
+    currency = models.TextField(null=True)
+    source_uuid = models.UUIDField(unique=False, null=True)
+    invoice_month = models.CharField(max_length=256, null=True, blank=True)
+    credit_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True, blank=True)
+
+
+class OCPGCPNetworkSummaryP(models.Model):
+    """A summarized view of OCP on GCP cost."""
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPGCPCostSummaryByServiceP."""
+
+        db_table = "reporting_ocpgcp_network_summary_p"
+
+    uuid = models.UUIDField(primary_key=True, default=uuid4)
+    # OCP Fields
+    report_period = models.ForeignKey("OCPUsageReportPeriod", on_delete=models.CASCADE, null=True)
+    cluster_id = models.CharField(max_length=50, null=True)
+    cluster_alias = models.CharField(max_length=256, null=True)
+    # Kubernetes objects by convention have a max name length of 253 chars
+    node = models.CharField(max_length=253, null=True)
+    usage_start = models.DateField(null=False)
+    usage_end = models.DateField(null=False)
+    account_id = models.CharField(max_length=50, null=False)
+    service_id = models.CharField(max_length=256, null=True)
+    service_alias = models.CharField(max_length=256, null=True, blank=True)
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+    markup_cost = models.DecimalField(max_digits=17, decimal_places=9, null=True)
+    currency = models.TextField(null=True)
+    source_uuid = models.UUIDField(unique=False, null=True)
+    invoice_month = models.CharField(max_length=256, null=True, blank=True)
+    credit_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True, blank=True)
+
+
+class OCPGCPStorageSummaryP(models.Model):
+    """A summarized view of OCP on GCP cost."""
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPGCPCostSummaryByServiceP."""
+
+        db_table = "reporting_ocpgcp_storage_summary_p"
+
+    uuid = models.UUIDField(primary_key=True, default=uuid4)
+    # OCP Fields
+    report_period = models.ForeignKey("OCPUsageReportPeriod", on_delete=models.CASCADE, null=True)
+    cluster_id = models.CharField(max_length=50, null=True)
+    cluster_alias = models.CharField(max_length=256, null=True)
+    # Kubernetes objects by convention have a max name length of 253 chars
+    node = models.CharField(max_length=253, null=True)
+    usage_start = models.DateField(null=False)
+    usage_end = models.DateField(null=False)
+    account_id = models.CharField(max_length=50, null=False)
+    service_id = models.CharField(max_length=256, null=True)
+    service_alias = models.CharField(max_length=256, null=True, blank=True)
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+    markup_cost = models.DecimalField(max_digits=17, decimal_places=9, null=True)
+    currency = models.TextField(null=True)
+    source_uuid = models.UUIDField(unique=False, null=True)
+    invoice_month = models.CharField(max_length=256, null=True, blank=True)
     credit_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True, blank=True)

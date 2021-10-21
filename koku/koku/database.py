@@ -57,6 +57,14 @@ PARTITIONED_MODEL_NAMES = [
     "OCPAllNetworkSummaryPT",
     "OCPAllStorageSummaryPT",
     "OCPGCPCostSummaryByAccountP",
+    "OCPGCPCostSummaryByGCPProjectP",
+    "OCPGCPCostSummaryByRegionP",
+    "OCPGCPCostSummaryByServiceP",
+    "OCPGCPCostSummaryP",
+    "OCPGCPComputeSummaryP",
+    "OCPGCPDatabaseSummaryP",
+    "OCPGCPNetworkSummaryP",
+    "OCPGCPStorageSummaryP",
 ]
 DB_MODELS_LOCK = threading.Lock()
 DB_MODELS = {}
