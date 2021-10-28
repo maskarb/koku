@@ -14,6 +14,7 @@ from decimal import Decimal
 from decimal import DivisionByZero
 from decimal import InvalidOperation
 from itertools import groupby
+from json import dumps as json_dumps
 from urllib.parse import quote_plus
 
 from django.db.models import F
@@ -105,6 +106,8 @@ class ReportQueryHandler(QueryHandler):
     def query_table(self):
         """Return the database table or view to query against."""
         query_table = self._mapper.query_table
+        if self.is_csv_output:
+            return query_table
         report_type = self._report_type
         report_group = "default"
 
@@ -359,13 +362,22 @@ class ReportQueryHandler(QueryHandler):
         for filter_map in self._mapper._report_type_map.get("filter"):
             filters.add(**filter_map)
 
+        if self.query_table == self._mapper.query_table and "gcp/storage" in self.parameters.request.path:
+            filters.add(
+                **{
+                    "field": "service_alias",
+                    "operation": "in",
+                    "parameter": ["Filestore", "Storage", "Cloud Storage", "Data Transfer"],
+                }
+            )
+
         # define filter parameters using API query params.
         composed_filters = self._get_search_filter(filters)
 
         LOG.debug(f"_get_filter: {composed_filters}")
         return composed_filters
 
-    def _get_group_by(self):
+    def _get_group_by(self):  # noqa: C901
         """Create list for group_by parameters."""
         group_by = []
         for item in self.group_by_options:
@@ -398,7 +410,14 @@ class ReportQueryHandler(QueryHandler):
         inherent_group_by = self._mapper._report_type_map.get("group_by")
         if inherent_group_by and not (group_by and self._limit):
             group_by = group_by + list(set(inherent_group_by) - set(group_by))
-
+        if self.is_csv_output:
+            add_tags = True
+            for entry in group_by:
+                if self._mapper.tag_column in entry:
+                    # There is already a specific tag group_by
+                    add_tags = False
+            if add_tags:
+                group_by.append(self._mapper.tag_column)
         return group_by
 
     def _get_tag_group_by(self):
@@ -960,7 +979,7 @@ class ReportQueryHandler(QueryHandler):
             date = date + date_delta
             row["date"] = self.date_to_string(date)
             key = tuple(row[key] for key in query_group_by)
-            previous_dict[key] = row[self._delta]
+            previous_dict[json_dumps(key)] = row[self._delta]
 
         return previous_dict
 
@@ -1009,7 +1028,7 @@ class ReportQueryHandler(QueryHandler):
         previous_dict = self._create_previous_totals(previous_query, delta_group_by)
         for row in query_data:
             key = tuple(row[key] for key in delta_group_by)
-            previous_total = previous_dict.get(key) or 0
+            previous_total = previous_dict.get(json_dumps(key)) or 0
             current_total = row.get(self._delta) or 0
             row["delta_value"] = current_total - previous_total
             row["delta_percent"] = self._percent_delta(current_total, previous_total)

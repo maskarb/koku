@@ -407,7 +407,7 @@ class GCPReportQueryHandlerTest(IamTestCase):
 
     def test_execute_query_curr_month_by_project(self):
         """Test execute_query for current month on monthly breakdown by project."""
-        url = "?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=monthly&group_by[project]=*"  # noqa: E501
+        url = "?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=monthly&group_by[gcp_project]=*"  # noqa: E501
         with tenant_context(self.tenant):
             project_count = (
                 GCPCostEntryLineItemDailySummary.objects.filter(usage_start__gte=self.dh.this_month_start)
@@ -430,12 +430,12 @@ class GCPReportQueryHandlerTest(IamTestCase):
         cmonth_str = DateHelper().this_month_start.strftime("%Y-%m")
         for data_item in data:
             month_val = data_item.get("date")
-            month_data = data_item.get("projects")
+            month_data = data_item.get("gcp_projects")
             self.assertEqual(month_val, cmonth_str)
             self.assertIsInstance(month_data, list)
             self.assertEqual(len(month_data), project_count)
             for month_item in month_data:
-                self.assertIsInstance(month_item.get("project"), str)
+                self.assertIsInstance(month_item.get("gcp_project"), str)
                 self.assertIsInstance(month_item.get("values"), list)
                 self.assertIsNotNone(month_item.get("values")[0].get("cost"))
 
@@ -447,7 +447,7 @@ class GCPReportQueryHandlerTest(IamTestCase):
                 .values("project_id")[0]
                 .get("project_id")
             )
-        url = f"?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=monthly&group_by[project]={project}"  # noqa: E501
+        url = f"?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=monthly&group_by[gcp_project]={project}"  # noqa: E501
         query_params = self.mocked_query_params(url, GCPCostView)
         handler = GCPReportQueryHandler(query_params)
         query_output = handler.execute_query()
@@ -464,11 +464,11 @@ class GCPReportQueryHandlerTest(IamTestCase):
         cmonth_str = DateHelper().this_month_start.strftime("%Y-%m")
         for data_item in data:
             month_val = data_item.get("date")
-            month_data = data_item.get("projects")
+            month_data = data_item.get("gcp_projects")
             self.assertEqual(month_val, cmonth_str)
             self.assertIsInstance(month_data, list)
             for month_item in month_data:
-                self.assertIsInstance(month_item.get("project"), str)
+                self.assertIsInstance(month_item.get("gcp_project"), str)
                 self.assertIsInstance(month_item.get("values"), list)
                 self.assertIsNotNone(month_item.get("values")[0].get("cost"))
 
@@ -575,8 +575,16 @@ class GCPReportQueryHandlerTest(IamTestCase):
         self.assertIsNotNone(total.get("cost"))
         self.assertEqual(total.get("cost", {}).get("total").get("value"), current_totals["cost_total"])
 
+        with tenant_context(self.tenant):
+            tag_count = (
+                GCPCostEntryLineItemDailySummary.objects.filter(usage_start__gte=self.dh.this_month_start)
+                .values(handler._mapper.tag_column)
+                .distinct()
+                .count()
+            )
+
         cmonth_str = DateHelper().this_month_start.strftime("%Y-%m")
-        self.assertEqual(len(data), 1)
+        self.assertEqual(len(data), tag_count)
         for data_item in data:
             month_val = data_item.get("date")
             self.assertEqual(month_val, cmonth_str)
@@ -586,7 +594,7 @@ class GCPReportQueryHandlerTest(IamTestCase):
         """Test execute_query for current month on monthly by account with limt as csv."""
         mock_accept.return_value = "text/csv"
 
-        url = "?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=monthly&filter[limit]=2&group_by[account]=*"  # noqa: E501
+        url = "?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=monthly&filter[limit]=1&group_by[account]=*"  # noqa: E501
         query_params = self.mocked_query_params(url, GCPCostView)
         handler = GCPReportQueryHandler(query_params)
         query_output = handler.execute_query()
@@ -600,11 +608,22 @@ class GCPReportQueryHandlerTest(IamTestCase):
         self.assertIsNotNone(total.get("cost"))
         self.assertEqual(total.get("cost", {}).get("total").get("value"), current_totals["cost_total"])
 
+        with tenant_context(self.tenant):
+            tag_count = (
+                GCPCostEntryLineItemDailySummary.objects.filter(usage_start__gte=self.dh.this_month_start)
+                .values(handler._mapper.tag_column)
+                .distinct()
+                .count()
+            )
+
         cmonth_str = self.dh.this_month_start.strftime("%Y-%m")
-        self.assertEqual(len(data), 1)
+        self.assertEqual(len(data), tag_count)
+        accounts = set()
         for data_item in data:
+            accounts.add(data_item.get("account"))
             month = data_item.get("date")
             self.assertEqual(month, cmonth_str)
+        self.assertEqual(len(accounts), 1)
 
     @skip("Skipping for now due to beginning of month failure")
     def test_execute_query_w_delta(self):
@@ -868,8 +887,8 @@ class GCPReportQueryHandlerTest(IamTestCase):
         test_cases = [
             ("?", GCPCostView, GCPCostSummary),
             ("?group_by[account]=*", GCPCostView, GCPCostSummaryByAccount),
-            ("?group_by[project]=*", GCPCostView, GCPCostSummaryByProject),
-            ("?group_by[project]=*&group_by[account]=*", GCPCostView, GCPCostSummaryByProject),
+            ("?group_by[gcp_project]=*", GCPCostView, GCPCostSummaryByProject),
+            ("?group_by[gcp_project]=*&group_by[account]=*", GCPCostView, GCPCostSummaryByProject),
             ("?group_by[service]=*", GCPCostView, GCPCostSummaryByService),
             ("?group_by[service]=*&group_by[account]=*", GCPCostView, GCPCostSummaryByService),
             (
@@ -910,7 +929,7 @@ class GCPReportQueryHandlerTest(IamTestCase):
             urls = ["?"]
             if endpoint == GCPCostView:
                 urls.extend(
-                    ["?group_by[account]=*", "?group_by[project]=*", "group_by[region]=*", "?group_by[service]=*"]
+                    ["?group_by[account]=*", "?group_by[gcp_project]=*", "group_by[region]=*", "?group_by[service]=*"]
                 )
             for url in urls:
                 query_params = self.mocked_query_params(url, endpoint)

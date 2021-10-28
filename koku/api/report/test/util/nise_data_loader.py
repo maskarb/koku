@@ -54,11 +54,14 @@ class NiseDataLoader(DataLoader):
         next_month_str = next_month.strftime("%Y%m%d")
         return f"{base_path}/{this_month_str}-{next_month_str}"
 
-    def process_report(self, report, compression, provider_type, provider, manifest):
+    def process_report(self, report, compression, provider_type, provider, manifest, bill_date=None):
         """Run the report processor on a report."""
         status = baker.make("CostUsageReportStatus", manifest=manifest, report_name=report)
         status.last_started_datetime = self.dh.now
-        ReportProcessor(self.schema, report, compression, provider_type, provider.uuid, manifest.id).process()
+        context = {"start_date": bill_date, "tracing_id": uuid4()}
+        ReportProcessor(
+            self.schema, report, compression, provider_type, provider.uuid, manifest.id, context=context
+        ).process()
         status.last_completed_datetime = self.dh.now
         status.save()
 
@@ -104,7 +107,7 @@ class NiseDataLoader(DataLoader):
                     continue
                 elif "manifest" in report.lower():
                     continue
-                self.process_report(report, "PLAIN", provider_type, provider, manifest)
+                self.process_report(report, "PLAIN", provider_type, provider, manifest, bill_date=bill_date)
             with patch("masu.processor.tasks.chain"):
                 update_summary_tables(
                     self.schema,
