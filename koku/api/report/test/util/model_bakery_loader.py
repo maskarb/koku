@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 """Test utilities."""
+import logging
 import random
 from datetime import timedelta
 from functools import partial
@@ -31,7 +32,7 @@ from reporting.models import AWSOrganizationalUnit
 
 # from api.provider.models import ProviderBillingSource
 
-
+LOG = logging.getLogger(__name__)
 BILL_MODELS = {
     Provider.PROVIDER_AWS: "AWSCostEntryBill",
     Provider.PROVIDER_AWS_LOCAL: "AWSCostEntryBill",
@@ -166,6 +167,7 @@ class ModelBakeryDataLoader(DataLoader):
             main_alias = baker.make("AWSAccountAlias", account_id=payer_account_id, account_alias="Test Account")
 
         for start_date, end_date, bill_date in self.dates:
+            LOG.info(f"load aws data for start: {start_date}, end: {end_date}")
             with schema_context(self.schema):
                 org_units = list(AWSOrganizationalUnit.objects.filter(account_alias_id__isnull=False))
                 random.shuffle(org_units)
@@ -223,6 +225,7 @@ class ModelBakeryDataLoader(DataLoader):
         )
         sub_guid = self.faker.uuid4()
         for start_date, end_date, bill_date in self.dates:
+            LOG.info(f"load azure data for start: {start_date}, end: {end_date}")
             self.create_manifest(provider, bill_date)
             bill = self.create_bill(provider_type, provider, bill_date)
             bills.append(bill)
@@ -243,8 +246,9 @@ class ModelBakeryDataLoader(DataLoader):
         AzureReportDBAccessor(self.schema).populate_tags_summary_table(
             bill_ids, self.first_start_date, self.last_end_date
         )
-        # AzureReportDBAccessor(self.schema).populate_ui_summary_tables(start_date, end_date, provider.uuid)
-        refresh_materialized_views(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True)
+        AzureReportDBAccessor(self.schema).populate_ui_summary_tables(
+            self.first_start_date, self.last_end_date, provider.uuid
+        )
         return provider, bills
 
     def load_gcp_data(self, linked_openshift_provider=None):
@@ -259,6 +263,7 @@ class ModelBakeryDataLoader(DataLoader):
         )
         projects = [(self.faker.slug(), self.faker.slug()) for _ in range(3)]
         for start_date, end_date, bill_date in self.dates:
+            LOG.info(f"load gcp data for start: {start_date}, end: {end_date}")
             self.create_manifest(provider, bill_date)
             bill = self.create_bill(provider_type, provider, bill_date)
             bills.append(bill)
@@ -282,10 +287,9 @@ class ModelBakeryDataLoader(DataLoader):
         GCPReportDBAccessor(self.schema).populate_tags_summary_table(
             bill_ids, self.first_start_date, self.last_end_date
         )
-        # GCPReportDBAccessor(self.schema).populate_ui_summary_tables(
-        #     self.first_start_date, self.last_end_date, provider.uuid
-        # )
-        refresh_materialized_views(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True)
+        GCPReportDBAccessor(self.schema).populate_ui_summary_tables(
+            self.first_start_date, self.last_end_date, provider.uuid
+        )
         return provider, bills
 
     def load_openshift_data(self, cluster_id, on_cloud=False):
@@ -299,6 +303,7 @@ class ModelBakeryDataLoader(DataLoader):
         if not on_cloud:
             self.create_cost_model(provider)
         for start_date, end_date, bill_date in self.dates:
+            LOG.info(f"load ocp data for start: {start_date}, end: {end_date}")
             self.create_manifest(provider, bill_date)
             report_period = self.create_bill(
                 provider_type, provider, bill_date, cluster_id=cluster_id, cluster_alias=cluster_id
@@ -372,6 +377,7 @@ class ModelBakeryDataLoader(DataLoader):
         for dates, bill, report_period in zip(self.dates, bills, report_periods):
             start_date = dates[0]
             end_date = dates[1]
+            LOG.info(f"load ocp-on-{provider.type} data for start: {start_date}, end: {end_date}")
             with schema_context(self.schema):
                 days = (end_date - start_date).days
                 for i in range(days):
