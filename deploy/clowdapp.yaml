@@ -722,6 +722,14 @@ objects:
           enabled: true
     - minReplicas: ${{SOURCES_LISTENER_MIN_REPLICAS}}
       name: clowder-sources-listener
+      autoScaler:
+        maxReplicaCount: 2
+        triggers:
+        - type: kafka
+          metadata:
+            topic: platform.sources.event-stream
+            consumerGroup: hccm-sources
+            lagThreshold: '5'
       podSpec:
         command:
         - /bin/bash
