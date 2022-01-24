@@ -729,7 +729,7 @@ objects:
           metadata:
             topic: platform.sources.event-stream
             consumerGroup: hccm-sources
-            lagThreshold: '5'
+            lagThreshold: '10'
       podSpec:
         command:
         - /bin/bash
