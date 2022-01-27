@@ -15,7 +15,7 @@ from api.common import CACHE_RH_IDENTITY_HEADER
 from api.common.permissions.azure_access import AzureAccessPermission
 from api.resource_types.serializers import ResourceTypeSerializer
 from reporting.provider.azure.models import AzureCostSummaryByServiceP
-from reporting.provider.azure.openshift.models import OCPAzureCostSummaryByService
+from reporting.provider.azure.openshift.models import OCPAzureCostSummaryByServiceP
 
 
 class AzureServiceView(generics.ListAPIView):
@@ -32,7 +32,7 @@ class AzureServiceView(generics.ListAPIView):
     permission_classes = [AzureAccessPermission]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     ordering = ["value"]
-    search_fields = ["$value"]
+    search_fields = ["value"]
 
     @method_decorator(vary_on_headers(CACHE_RH_IDENTITY_HEADER))
     def list(self, request):
@@ -50,7 +50,7 @@ class AzureServiceView(generics.ListAPIView):
                     openshift = self.request.query_params.get("openshift")
                     if openshift == "true":
                         self.queryset = (
-                            OCPAzureCostSummaryByService.objects.annotate(**{"value": F("service_name")})
+                            OCPAzureCostSummaryByServiceP.objects.annotate(**{"value": F("service_name")})
                             .values("value")
                             .distinct()
                             .filter(service_name__isnull=False)

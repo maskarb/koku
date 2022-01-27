@@ -17,9 +17,11 @@ CREATE TABLE IF NOT EXISTS hive.{{schema | sqlsafe}}.reporting_ocpusagelineitem_
     pod_labels varchar,
     pod_usage_cpu_core_hours double,
     pod_request_cpu_core_hours double,
+    pod_effective_usage_cpu_core_hours double,
     pod_limit_cpu_core_hours double,
     pod_usage_memory_gigabyte_hours double,
     pod_request_memory_gigabyte_hours double,
+    pod_effective_usage_memory_gigabyte_hours double,
     pod_limit_memory_gigabyte_hours double,
     node_capacity_cpu_cores double,
     node_capacity_cpu_core_hours double,
@@ -44,15 +46,6 @@ CREATE TABLE IF NOT EXISTS hive.{{schema | sqlsafe}}.reporting_ocpusagelineitem_
 ) WITH(format = 'PARQUET', partitioned_by=ARRAY['source', 'year', 'month', 'day'])
 ;
 
-
-DELETE
-FROM hive.{{schema | sqlsafe}}.reporting_ocpusagelineitem_daily_summary
-WHERE source = {{source}}
-    AND year = {{year}}
-    AND month = {{month}}
-    AND day IN ({{days}})
-;
-
 INSERT INTO hive.{{schema | sqlsafe}}.reporting_ocpusagelineitem_daily_summary (
     uuid,
     report_period_id,
@@ -67,9 +60,11 @@ INSERT INTO hive.{{schema | sqlsafe}}.reporting_ocpusagelineitem_daily_summary (
     pod_labels,
     pod_usage_cpu_core_hours,
     pod_request_cpu_core_hours,
+    pod_effective_usage_cpu_core_hours,
     pod_limit_cpu_core_hours,
     pod_usage_memory_gigabyte_hours,
     pod_request_memory_gigabyte_hours,
+    pod_effective_usage_memory_gigabyte_hours,
     pod_limit_memory_gigabyte_hours,
     node_capacity_cpu_cores,
     node_capacity_cpu_core_hours,
@@ -207,9 +202,11 @@ SELECT cast(uuid() as varchar) as uuid,
     json_format(cast(pua.pod_labels as json)) as pod_labels,
     pua.pod_usage_cpu_core_hours,
     pua.pod_request_cpu_core_hours,
+    pua.pod_effective_usage_cpu_core_hours,
     pua.pod_limit_cpu_core_hours,
     pua.pod_usage_memory_gigabyte_hours,
     pua.pod_request_memory_gigabyte_hours,
+    pua.pod_effective_usage_memory_gigabyte_hours,
     pua.pod_limit_memory_gigabyte_hours,
     pua.node_capacity_cpu_cores,
     pua.node_capacity_cpu_core_hours,
@@ -244,9 +241,11 @@ FROM (
         max(li.resource_id) as resource_id,
         sum(li.pod_usage_cpu_core_seconds) / 3600.0 as pod_usage_cpu_core_hours,
         sum(li.pod_request_cpu_core_seconds) / 3600.0  as pod_request_cpu_core_hours,
+        sum(li.pod_effective_usage_cpu_core_seconds) / 3600.0  as pod_effective_usage_cpu_core_hours,
         sum(li.pod_limit_cpu_core_seconds) / 3600.0 as pod_limit_cpu_core_hours,
         sum(li.pod_usage_memory_byte_seconds) / 3600.0 * power(2, -30) as pod_usage_memory_gigabyte_hours,
         sum(li.pod_request_memory_byte_seconds) / 3600.0 * power(2, -30) as pod_request_memory_gigabyte_hours,
+        sum(li.pod_effective_usage_memory_byte_seconds) / 3600.0 * power(2, -30) as pod_effective_usage_memory_gigabyte_hours,
         sum(li.pod_limit_memory_byte_seconds) / 3600.0 * power(2, -30) as pod_limit_memory_gigabyte_hours,
         max(li.node_capacity_cpu_cores) as node_capacity_cpu_cores,
         max(nc.node_capacity_cpu_core_seconds) / 3600.0 as node_capacity_cpu_core_hours,
@@ -299,9 +298,11 @@ SELECT cast(uuid() as varchar) as uuid,
     NULL as pod_labels,
     NULL as pod_usage_cpu_core_hours,
     NULL as pod_request_cpu_core_hours,
+    NULL as pod_effective_usage_cpu_core_hours,
     NULL as pod_limit_cpu_core_hours,
     NULL as pod_usage_memory_gigabyte_hours,
     NULL as pod_request_memory_gigabyte_hours,
+    NULL as pod_effective_usage_memory_gigabyte_hours,
     NULL as pod_limit_memory_gigabyte_hours,
     NULL as node_capacity_cpu_cores,
     NULL as node_capacity_cpu_core_hours,
@@ -406,9 +407,11 @@ INSERT INTO postgres.{{schema | sqlsafe}}.reporting_ocpusagelineitem_daily_summa
     pod_labels,
     pod_usage_cpu_core_hours,
     pod_request_cpu_core_hours,
+    pod_effective_usage_cpu_core_hours,
     pod_limit_cpu_core_hours,
     pod_usage_memory_gigabyte_hours,
     pod_request_memory_gigabyte_hours,
+    pod_effective_usage_memory_gigabyte_hours,
     pod_limit_memory_gigabyte_hours,
     node_capacity_cpu_cores,
     node_capacity_cpu_core_hours,
@@ -440,9 +443,11 @@ SELECT cast(uuid as UUID),
     json_parse(pod_labels),
     pod_usage_cpu_core_hours,
     pod_request_cpu_core_hours,
+    pod_effective_usage_cpu_core_hours,
     pod_limit_cpu_core_hours,
     pod_usage_memory_gigabyte_hours,
     pod_request_memory_gigabyte_hours,
+    pod_effective_usage_memory_gigabyte_hours,
     pod_limit_memory_gigabyte_hours,
     node_capacity_cpu_cores,
     node_capacity_cpu_core_hours,
@@ -463,8 +468,6 @@ SELECT cast(uuid as UUID),
 FROM hive.{{schema | sqlsafe}}.reporting_ocpusagelineitem_daily_summary AS lids
 WHERE lids.source = {{source}}
     AND lids.year = {{year}}
-    AND lids.month = {{month}}
+    AND lpad(lids.month, 2, '0') = {{month}} -- Zero pad the month when fewer than 2 characters
     AND lids.day IN ({{days}})
-    -- AND lids.usage_start >= TIMESTAMP {{start_date}}
-    -- AND lids.usage_start < date_add('day', 1, TIMESTAMP {{end_date}})
 ;

@@ -36,8 +36,6 @@ from api.tags.aws.view import AWSTagView
 from api.utils import DateHelper
 from api.utils import materialized_view_month_start
 from reporting.models import AWSComputeSummaryByAccountP
-from reporting.models import AWSComputeSummaryByRegionP
-from reporting.models import AWSComputeSummaryByServiceP
 from reporting.models import AWSComputeSummaryP
 from reporting.models import AWSCostEntryBill
 from reporting.models import AWSCostEntryLineItemDailySummary
@@ -48,8 +46,6 @@ from reporting.models import AWSCostSummaryP
 from reporting.models import AWSDatabaseSummaryP
 from reporting.models import AWSNetworkSummaryP
 from reporting.models import AWSStorageSummaryByAccountP
-from reporting.models import AWSStorageSummaryByRegionP
-from reporting.models import AWSStorageSummaryByServiceP
 from reporting.models import AWSStorageSummaryP
 from reporting.provider.aws.models import AWSOrganizationalUnit
 
@@ -886,14 +882,14 @@ class AWSReportQueryTest(IamTestCase):
         with tenant_context(self.tenant):
             curr = AWSCostEntryLineItemDailySummary.objects.filter(
                 usage_start__gte=dh.this_month_start,
-                usage_end__lte=dh.today,
+                usage_start__lte=dh.today,
                 account_alias__account_alias=self.account_alias,
             ).aggregate(value=Sum(F("unblended_cost") + F("markup_cost")))
             current_total = Decimal(curr.get("value"))
 
             prev = AWSCostEntryLineItemDailySummary.objects.filter(
                 usage_start__gte=dh.last_month_start,
-                usage_end__lte=dh.today - relativedelta(months=1),
+                usage_start__lte=dh.today - relativedelta(months=1),
                 account_alias__account_alias=self.account_alias,
             ).aggregate(value=Sum(F("unblended_cost") + F("markup_cost")))
             prev_total = Decimal(prev.get("value"))
@@ -1607,7 +1603,7 @@ class AWSReportQueryTest(IamTestCase):
                 ten_days_ago = self.dh.n_days_ago(self.dh.today, 9)
                 expected = AWSCostEntryLineItemDailySummary.objects.filter(
                     usage_start__gte=ten_days_ago,
-                    usage_end__lte=self.dh.today,
+                    usage_start__lte=self.dh.today,
                     organizational_unit__org_unit_path__icontains=path,
                 ).aggregate(
                     **{
@@ -1655,7 +1651,7 @@ class AWSReportQueryTest(IamTestCase):
                 ten_days_ago = self.dh.n_days_ago(self.dh.today, 9)
                 expected = AWSCostEntryLineItemDailySummary.objects.filter(
                     usage_start__gte=ten_days_ago,
-                    usage_end__lte=self.dh.today,
+                    usage_start__lte=self.dh.today,
                     organizational_unit__org_unit_path__icontains=path,
                 ).aggregate(
                     **{
@@ -1697,7 +1693,7 @@ class AWSReportQueryTest(IamTestCase):
             ten_days_ago = self.dh.n_days_ago(self.dh.today, 9)
             expected = AWSCostEntryLineItemDailySummary.objects.filter(
                 usage_start__gte=ten_days_ago,
-                usage_end__lte=self.dh.today,
+                usage_start__lte=self.dh.today,
                 organizational_unit__org_unit_path__icontains=org_unit,
             ).aggregate(
                 **{
@@ -2214,22 +2210,22 @@ class AWSQueryHandlerTest(IamTestCase):
             ("?group_by[service]=*&group_by[account]=*", AWSCostView, AWSCostSummaryByServiceP),
             ("?", AWSInstanceTypeView, AWSComputeSummaryP),
             ("?group_by[account]=*", AWSInstanceTypeView, AWSComputeSummaryByAccountP),
-            ("?group_by[region]=*", AWSInstanceTypeView, AWSComputeSummaryByRegionP),
-            ("?group_by[region]=*&group_by[account]=*", AWSInstanceTypeView, AWSComputeSummaryByRegionP),
-            ("?group_by[service]=*", AWSInstanceTypeView, AWSComputeSummaryByServiceP),
-            ("?group_by[service]=*&group_by[account]=*", AWSInstanceTypeView, AWSComputeSummaryByServiceP),
-            ("?group_by[product_family]=*", AWSInstanceTypeView, AWSComputeSummaryByServiceP),
-            ("?group_by[product_family]=*&group_by[account]=*", AWSInstanceTypeView, AWSComputeSummaryByServiceP),
+            ("?group_by[region]=*", AWSInstanceTypeView, AWSCostEntryLineItemDailySummary),
+            ("?group_by[region]=*&group_by[account]=*", AWSInstanceTypeView, AWSCostEntryLineItemDailySummary),
+            ("?group_by[service]=*", AWSInstanceTypeView, AWSCostEntryLineItemDailySummary),
+            ("?group_by[service]=*&group_by[account]=*", AWSInstanceTypeView, AWSCostEntryLineItemDailySummary),
+            ("?group_by[product_family]=*", AWSInstanceTypeView, AWSCostEntryLineItemDailySummary),
+            ("?group_by[product_family]=*&group_by[account]=*", AWSInstanceTypeView, AWSCostEntryLineItemDailySummary),
             ("?group_by[instance_type]=*", AWSInstanceTypeView, AWSComputeSummaryP),
             ("?group_by[instance_type]=*&group_by[account]=*", AWSInstanceTypeView, AWSComputeSummaryByAccountP),
             ("?", AWSStorageView, AWSStorageSummaryP),
             ("?group_by[account]=*", AWSStorageView, AWSStorageSummaryByAccountP),
-            ("?group_by[region]=*", AWSStorageView, AWSStorageSummaryByRegionP),
-            ("?group_by[region]=*&group_by[account]=*", AWSStorageView, AWSStorageSummaryByRegionP),
-            ("?group_by[service]=*", AWSStorageView, AWSStorageSummaryByServiceP),
-            ("?group_by[service]=*&group_by[account]=*", AWSStorageView, AWSStorageSummaryByServiceP),
-            ("?group_by[product_family]=*", AWSStorageView, AWSStorageSummaryByServiceP),
-            ("?group_by[product_family]=*&group_by[account]=*", AWSStorageView, AWSStorageSummaryByServiceP),
+            ("?group_by[region]=*", AWSStorageView, AWSCostEntryLineItemDailySummary),
+            ("?group_by[region]=*&group_by[account]=*", AWSStorageView, AWSCostEntryLineItemDailySummary),
+            ("?group_by[service]=*", AWSStorageView, AWSCostEntryLineItemDailySummary),
+            ("?group_by[service]=*&group_by[account]=*", AWSStorageView, AWSCostEntryLineItemDailySummary),
+            ("?group_by[product_family]=*", AWSStorageView, AWSCostEntryLineItemDailySummary),
+            ("?group_by[product_family]=*&group_by[account]=*", AWSStorageView, AWSCostEntryLineItemDailySummary),
             (
                 (
                     "?filter[service]=AmazonRDS,AmazonDynamoDB,AmazonElastiCache,"

@@ -47,11 +47,9 @@ class QueryParameters:
             (Provider.PROVIDER_OCP, "node", "openshift.node", False),
             (Provider.PROVIDER_OCP, "project", "openshift.project", False),
         ],
-        # TODO: COST-1986
         "gcp": [
             (Provider.PROVIDER_GCP, "account", "gcp.account"),
             (Provider.PROVIDER_GCP, "gcp_project", "gcp.project"),
-            (Provider.PROVIDER_GCP, "project", "gcp.project"),
         ],
         "ibm": [(Provider.PROVIDER_IBM, "account", "ibm.account")],
     }
@@ -356,7 +354,8 @@ class QueryParameters:
     @parameters.setter
     def parameters(self, dikt):
         """Parameters setter."""
-        self._display_parameters = dikt
+        # This is used to convert the order_by[infrastructure]
+        # to the provider map choices aka infrastructure = infra_total
         modified_param_dict = copy.deepcopy(dikt)
         for param, param_value in dikt.items():
             if isinstance(param_value, dict):
@@ -374,11 +373,6 @@ class QueryParameters:
                 modified_param_dict[param] = new_param_value
 
         self._parameters = modified_param_dict
-
-    @property
-    def display_parameters(self):
-        """Return display_parameters property."""
-        return self._display_parameters
 
     @property
     def tenant(self):

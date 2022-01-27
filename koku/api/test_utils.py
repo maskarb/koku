@@ -14,11 +14,20 @@ from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils import timezone
 from pint.errors import UndefinedUnitError
+from tenant_schemas.utils import schema_context
 
+from api.iam.test.iam_test_case import IamTestCase
+from api.user_settings.settings import USER_SETTINGS
 from api.utils import DateHelper
+from api.utils import get_account_settings
+from api.utils import get_cost_type
+from api.utils import get_currency
 from api.utils import materialized_view_month_start
 from api.utils import merge_dicts
 from api.utils import UnitConverter
+from koku.settings import KOKU_DEFAULT_COST_TYPE
+from koku.settings import KOKU_DEFAULT_CURRENCY
+from reporting.user_settings.models import UserSettings
 
 
 class MergeDictsTest(unittest.TestCase):
@@ -250,3 +259,37 @@ class APIUtilsUnitConverterTest(TestCase):
 
         self.assertEqual(result.units, to_unit)
         self.assertEqual(result.magnitude, expected_value)
+
+
+class GeneralUtilsTest(IamTestCase):
+    """Test general functions in utils"""
+
+    def test_get_cost_type(self):
+        """Test the get_cost_type function in utils."""
+        with schema_context(self.schema_name):
+            query_settings = UserSettings.objects.all().first()
+            if not query_settings:
+                self.assertEqual(get_cost_type(self.request_context["request"]), KOKU_DEFAULT_COST_TYPE)
+            else:
+                cost_type = query_settings.settings["cost_type"]
+                self.assertEqual(get_cost_type(self.request_context["request"]), cost_type)
+
+    def test_get_currency(self):
+        """Test the get_currency function in utils."""
+        with schema_context(self.schema_name):
+            query_settings = UserSettings.objects.all().first()
+            if not query_settings:
+                self.assertEqual(get_currency(self.request_context["request"]), KOKU_DEFAULT_CURRENCY)
+            else:
+                currency = query_settings.settings["currency"]
+                self.assertEqual(get_currency(self.request_context["request"]), currency)
+
+    def test_get_user_settings(self):
+        """Test the get_user_settings function in utils."""
+        with schema_context(self.schema_name):
+            query_settings = UserSettings.objects.all().first()
+            if not query_settings:
+                self.assertEqual(get_account_settings(self.request_context["request"]), USER_SETTINGS)
+            else:
+                settings = query_settings.settings
+                self.assertEqual(get_account_settings(self.request_context["request"]), settings)

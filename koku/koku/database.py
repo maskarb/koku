@@ -7,8 +7,10 @@ import json
 import logging
 import os
 import pkgutil
+import random
 import re
 import threading
+import time
 import types
 
 import django
@@ -37,6 +39,7 @@ from .migration_sql_helpers import find_db_functions_dir
 
 
 LOG = logging.getLogger(__name__)
+MIGRATION_APP_NAME = "koku_db_migration"
 
 
 class FKViolation:
@@ -86,98 +89,8 @@ engines = {
 }
 
 
-PARTITIONED_MODEL_NAMES = [
-    "AWSCostEntryLineItemDailySummary",
-    "AzureCostEntryLineItemDailySummary",
-    "GCPCostEntryLineItemDailySummary",
-    "OCPUsageLineItemDailySummary",
-    "OCPAllCostLineItemDailySummaryP",
-    "OCPAllCostLineItemProjectDailySummaryP",
-    "OCPAllCostSummaryPT",
-    "OCPAllCostSummaryByAccountPT",
-    "OCPAllCostSummaryByServicePT",
-    "OCPAllCostSummaryByRegionPT",
-    "OCPAllComputeSummaryPT",
-    "OCPAllDatabaseSummaryPT",
-    "OCPAllNetworkSummaryPT",
-    "OCPAllStorageSummaryPT",
-    "AWSCostSummaryP",
-    "AWSCostSummaryByServiceP",
-    "AWSCostSummaryByAccountP",
-    "AWSCostSummaryByRegionP",
-    "AWSComputeSummaryP",
-    "AWSComputeSummaryByServiceP",
-    "AWSComputeSummaryByAccountP",
-    "AWSComputeSummaryByRegionP",
-    "AWSStorageSummaryP",
-    "AWSStorageSummaryByServiceP",
-    "AWSStorageSummaryByAccountP",
-    "AWSStorageSummaryByRegionP",
-    "AWSNetworkSummaryP",
-    "AWSDatabaseSummaryP",
-    "OCPCostSummaryP",
-    "OCPCostSummaryByProjectP",
-    "OCPCostSummaryByNodeP",
-    "OCPPodSummaryP",
-    "OCPPodSummaryByProjectP",
-    "OCPVolumeSummaryP",
-    "OCPVolumeSummaryByProjectP",
-    "OCPAWSComputeSummaryP",
-    "OCPAWSCostSummaryP",
-    "OCPAWSCostSummaryByAccountP",
-    "OCPAWSCostSummaryByServiceP",
-    "OCPAWSCostSummaryByRegionP",
-    "OCPAWSStorageSummaryP",
-    "OCPAWSNetworkSummaryP",
-    "OCPAWSDatabaseSummaryP",
-    "OCPGCPCostLineItemDailySummaryP",
-    "OCPGCPCostLineItemProjectDailySummaryP",
-    "OCPGCPCostSummaryByAccountP",
-    "OCPGCPCostSummaryByGCPProjectP",
-    "OCPGCPCostSummaryByRegionP",
-    "OCPGCPCostSummaryByServiceP",
-    "OCPGCPCostSummaryP",
-    "OCPGCPComputeSummaryP",
-    "OCPGCPDatabaseSummaryP",
-    "OCPGCPNetworkSummaryP",
-    "OCPGCPStorageSummaryP",
-    "AzureCostSummaryP",
-    "AzureCostSummaryByAccountP",
-    "AzureCostSummaryByLocationP",
-    "AzureCostSummaryByServiceP",
-    "AzureComputeSummaryP",
-    "AzureStorageSummaryP",
-    "AzureNetworkSummaryP",
-    "AzureDatabaseSummaryP",
-    "GCPCostSummaryP",
-    "GCPCostSummaryByAccountP",
-    "GCPCostSummaryByProjectP",
-    "GCPCostSummaryByRegionP",
-    "GCPCostSummaryByServiceP",
-    "GCPComputeSummaryP",
-    "GCPComputeSummaryByProjectP",
-    "GCPComputeSummaryByServiceP",
-    "GCPComputeSummaryByAccountP",
-    "GCPComputeSummaryByRegionP",
-    "GCPStorageSummaryP",
-    "GCPStorageSummaryByProjectP",
-    "GCPStorageSummaryByServiceP",
-    "GCPStorageSummaryByAccountP",
-    "GCPStorageSummaryByRegionP",
-    "GCPNetworkSummaryP",
-    "GCPDatabaseSummaryP",
-]
 DB_MODELS_LOCK = threading.Lock()
 DB_MODELS = {}
-
-
-def _cert_config(db_config, database_cert):
-    """Add certificate configuration as needed."""
-    if database_cert:
-        cert_file = CONFIGURATOR.get_database_ca_file()
-        db_options = {"OPTIONS": {"sslmode": "verify-full", "sslrootcert": cert_file}}
-        db_config.update(db_options)
-    return db_config
 
 
 def config():
@@ -200,10 +113,16 @@ def config():
         "PASSWORD": CONFIGURATOR.get_database_password(),
         "HOST": CONFIGURATOR.get_database_host(),
         "PORT": CONFIGURATOR.get_database_port(),
+        "OPTIONS": {"application_name": ENVIRONMENT.get_value("APPLICATION_NAME", default="koku")},
     }
 
     database_cert = CONFIGURATOR.get_database_ca()
-    return _cert_config(db_config, database_cert)
+    if database_cert:
+        cert_file = CONFIGURATOR.get_database_ca_file()
+        db_config["OPTIONS"]["sslmode"] = "verify-full"
+        db_config["OPTIONS"]["sslrootcert"] = cert_file
+
+    return db_config
 
 
 def dbfunc_exists(connection, function_schema, function_name, function_signature):
@@ -257,6 +176,25 @@ def check_migrations_dbfunc(connection, targets):
     return ret
 
 
+def migrations_running(conn):
+    """Determine how many pids have the application_name MIGRATION_APP_NMAE. Don't count yourself!!"""
+    mig_pids = None
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+select array_agg(pid)
+  from pg_stat_activity
+ where pid != pg_backend_pid()
+   and application_name = %s ;
+""",
+            (MIGRATION_APP_NAME,),
+        )
+        mig_pids = cur.fetchone()[0]
+
+    return bool(mig_pids)
+
+
 def check_migrations():
     """
     Check the status of database migrations.
@@ -269,6 +207,13 @@ def check_migrations():
     try:
         connection = connections[DEFAULT_DB_ALIAS]
         connection.prepare_database()
+
+        random.seed(time.time())
+        time.sleep(random.random())
+        if migrations_running(connection):
+            LOG.info("Migrations are currently running.")
+            return "STOP"
+
         targets = MigrationLoader(None).graph.leaf_nodes()
         with transaction.atomic():
             verify_migrations_dbfunc(connection)
@@ -444,18 +389,15 @@ def p_table_sql(self, model):
     # Use default model class for the original django SQL generation
     sql, params = self.o_table_sql(model)
 
-    # Based on model name match, get the defined model from the app
-    # For some reason, this differs from the model class passed into this method
-    # from the django migration processing
-    if model.__name__ in PARTITIONED_MODEL_NAMES:
+    try:
         pmodel = get_model(model.__name__)
-    else:
-        pmodel = None
+    except KeyError:
+        pmodel = model
 
     # If there was a partition name match and the class has the required attribute,
     # use this information to add the partition clause to the create table sql
     # Otherwise, return the original sql and params
-    if pmodel is not None and hasattr(pmodel, "PartitionInfo"):
+    if hasattr(pmodel, "PartitionInfo"):
         LOG.info(f"*** Creating PARTITIONED TABLE {pmodel._meta.db_table}")
         partition_cols = pmodel.PartitionInfo.partition_cols
         sparams = {
@@ -502,25 +444,29 @@ def p_table_sql(self, model):
     else:
         LOG.info(f"Creating TABLE {model._meta.db_table}")
 
+    # See if we have any deferred PG sql statements
+    if hasattr(pmodel, "DeferredSQL"):
+        create_sql = getattr(pmodel.DeferredSQL, "create_sql", [])
+        if create_sql:
+            LOG.info(f"Queueing post-create-model SQL... ({len(create_sql)} statements)")
+            with self.connection.cursor() as cur:
+                for d_sql, d_params in create_sql:
+                    self.deferred_sql.append(cur.mogrify(d_sql, d_params).decode("utf-8"))
+
     return sql, params
 
 
 def p_delete_model(self, model):
-    if model.__name__ in PARTITIONED_MODEL_NAMES:
-        pmodel = get_model(model.__name__)
-    else:
-        pmodel = None
-
-    if pmodel is not None and hasattr(pmodel, "PartitionInfo"):
-        sparams = {"partitioned_table_name": pmodel._meta.db_table}
-        with self.connection.cursor() as cur:
-            drop_partitions_sql = cur.mogrify(self.sql_drop_partitions, sparams).decode("utf-8")
-        self.execute(drop_partitions_sql)
+    sparams = {"partitioned_table_name": model._meta.db_table}
+    # Drop partitions (if any)
+    with self.connection.cursor() as cur:
+        drop_partitions_sql = cur.mogrify(self.sql_drop_partitions, sparams).decode("utf-8")
+    self.execute(drop_partitions_sql)
 
     self.o_delete_model(model)
 
 
-def set_partitioned_schema_editor(schema_editor):
+def set_pg_extended_schema_editor(schema_editor):
     """
     Add attributes and override method of given schema_editor to allow partition table sql statements
     to be emitted.
@@ -584,11 +530,11 @@ DELETE
         setattr(schema_editor, "delete_model", types.MethodType(p_delete_model, schema_editor))
 
 
-def set_partition_mode(apps, schema_editor):
-    set_partitioned_schema_editor(schema_editor)
+def set_pg_extended_mode(apps, schema_editor):
+    set_pg_extended_schema_editor(schema_editor)
 
 
-def unset_partitioned_schema_editor(schema_editor):
+def unset_pg_extended_schema_editor(schema_editor):
     # Delete partition template attributes, if present
     if not hasattr(schema_editor, "sql_partitioned_table"):
         delattr(schema_editor, "sql_partitioned_table")
@@ -613,8 +559,8 @@ def unset_partitioned_schema_editor(schema_editor):
         delattr(schema_editor, "o_delete_model")
 
 
-def unset_partition_mode(apps, schema_editor):
-    unset_partitioned_schema_editor(schema_editor)
+def unset_pg_extended_mode(apps, schema_editor):
+    unset_pg_extended_schema_editor(schema_editor)
 
 
 class SQLScriptAtomicExecutorMixin:

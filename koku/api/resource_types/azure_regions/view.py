@@ -15,7 +15,7 @@ from api.common import CACHE_RH_IDENTITY_HEADER
 from api.common.permissions.azure_access import AzureAccessPermission
 from api.resource_types.serializers import ResourceTypeSerializer
 from reporting.provider.azure.models import AzureCostSummaryByLocationP
-from reporting.provider.azure.openshift.models import OCPAzureCostSummaryByLocation
+from reporting.provider.azure.openshift.models import OCPAzureCostSummaryByLocationP
 
 
 class AzureRegionView(generics.ListAPIView):
@@ -31,7 +31,7 @@ class AzureRegionView(generics.ListAPIView):
     permission_classes = [AzureAccessPermission]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     ordering = ["value"]
-    search_fields = ["$value"]
+    search_fields = ["value"]
 
     @method_decorator(vary_on_headers(CACHE_RH_IDENTITY_HEADER))
     def list(self, request):
@@ -49,7 +49,7 @@ class AzureRegionView(generics.ListAPIView):
                     openshift = self.request.query_params.get("openshift")
                     if openshift == "true":
                         self.queryset = (
-                            OCPAzureCostSummaryByLocation.objects.annotate(**{"value": F("resource_location")})
+                            OCPAzureCostSummaryByLocationP.objects.annotate(**{"value": F("resource_location")})
                             .values("value")
                             .distinct()
                             .filter(resource_location__isnull=False)

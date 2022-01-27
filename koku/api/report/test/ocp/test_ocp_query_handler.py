@@ -25,7 +25,7 @@ from api.tags.ocp.queries import OCPTagQueryHandler
 from api.tags.ocp.view import OCPTagView
 from api.utils import DateHelper
 from api.utils import materialized_view_month_start
-from reporting.models import OCPCostSummaryByProject
+from reporting.models import OCPCostSummaryByProjectP
 from reporting.models import OCPUsageLineItemDailySummary
 from reporting.provider.ocp.models import OCPUsageReportPeriod
 
@@ -158,6 +158,67 @@ class OCPReportQueryHandlerTest(IamTestCase):
                 cluster_name = cluster.get("cluster", "")
                 capacity = cluster.get("values")[0].get("capacity", {}).get("value")
                 self.assertEqual(capacity, capacity_by_cluster[cluster_name])
+
+        self.assertEqual(query_data.get("total", {}).get("capacity", {}).get("value"), total_capacity)
+
+    def test_get_cluster_capacity_monthly_resolution_start_end_date(self):
+        """Test that cluster capacity returns capacity by month."""
+        url = f"?start_date={self.dh.last_month_end.date()}&end_date={self.dh.today.date()}&filter[resolution]=monthly"
+        month_count = 2
+        query_params = self.mocked_query_params(url, OCPCpuView)
+        handler = OCPReportQueryHandler(query_params)
+        query_data = handler.execute_query()
+
+        total_capacity = Decimal(0)
+        query_filter = handler.query_filter
+        query_group_by = ["usage_start"]
+        annotations = {"capacity": Max("cluster_capacity_cpu_core_hours")}
+        cap_key = list(annotations.keys())[0]
+
+        q_table = handler._mapper.provider_map.get("tables").get("query")
+        query = q_table.objects.filter(query_filter)
+
+        with tenant_context(self.tenant):
+            cap_data = query.values(*query_group_by).annotate(**annotations)
+            for entry in cap_data:
+                total_capacity += entry.get(cap_key, 0)
+        total_capacity = total_capacity * month_count
+
+        self.assertEqual(query_data.get("total", {}).get("capacity", {}).get("value"), total_capacity)
+
+    def test_get_cluster_capacity_monthly_resolution_start_end_date_group_by_cluster(self):
+        """Test that cluster capacity returns capacity by cluster."""
+        url = (
+            f"?start_date={self.dh.last_month_end.date()}&end_date={self.dh.today.date()}"
+            f"&filter[resolution]=monthly&group_by[cluster]=*"
+        )
+        query_params = self.mocked_query_params(url, OCPCpuView)
+        handler = OCPReportQueryHandler(query_params)
+        query_data = handler.execute_query()
+
+        capacity_by_month_cluster = defaultdict(lambda: defaultdict(Decimal))
+        total_capacity = Decimal(0)
+        query_filter = handler.query_filter
+        query_group_by = ["usage_start", "cluster_id"]
+        annotations = {"capacity": Max("cluster_capacity_cpu_core_hours")}
+        cap_key = list(annotations.keys())[0]
+
+        q_table = handler._mapper.provider_map.get("tables").get("query")
+        query = q_table.objects.filter(query_filter)
+
+        with tenant_context(self.tenant):
+            cap_data = query.values(*query_group_by).annotate(**annotations)
+            for entry in cap_data:
+                cluster_id = entry.get("cluster_id", "")
+                month = entry.get("usage_start", "").month
+                capacity_by_month_cluster[month][cluster_id] += entry.get(cap_key, 0)
+                total_capacity += entry.get(cap_key, 0)
+
+        for entry in query_data.get("data", []):
+            for cluster in entry.get("clusters", []):
+                cluster_name = cluster.get("cluster", "")
+                capacity = cluster.get("values")[0].get("capacity", {}).get("value")
+                self.assertEqual(capacity, capacity_by_month_cluster[month][cluster_name])
 
         self.assertEqual(query_data.get("total", {}).get("capacity", {}).get("value"), total_capacity)
 
@@ -621,7 +682,7 @@ class OCPReportQueryHandlerTest(IamTestCase):
         cost_annotations = handler.report_annotations.get("cost_total")
         with tenant_context(self.tenant):
             expected = list(
-                OCPCostSummaryByProject.objects.filter(usage_start=str(yesterday))
+                OCPCostSummaryByProjectP.objects.filter(usage_start=str(yesterday))
                 .annotate(project=proj_annotations)
                 .values("project")
                 .annotate(cost=cost_annotations)
