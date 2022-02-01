@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS hive.{{schema | sqlsafe}}.reporting_ocpusagelineitem_
     node varchar,
     resource_id varchar,
     pod_labels varchar,
+    all_labels varchar,
     pod_usage_cpu_core_hours double,
     pod_request_cpu_core_hours double,
     pod_effective_usage_cpu_core_hours double,
@@ -58,6 +59,7 @@ INSERT INTO hive.{{schema | sqlsafe}}.reporting_ocpusagelineitem_daily_summary (
     node,
     resource_id,
     pod_labels,
+    all_labels,
     pod_usage_cpu_core_hours,
     pod_request_cpu_core_hours,
     pod_effective_usage_cpu_core_hours,
@@ -200,6 +202,7 @@ SELECT cast(uuid() as varchar) as uuid,
     pua.node,
     pua.resource_id,
     json_format(cast(pua.pod_labels as json)) as pod_labels,
+    json_format(cast(pua.all_labels as json)) as all_labels,
     pua.pod_usage_cpu_core_hours,
     pua.pod_request_cpu_core_hours,
     pua.pod_effective_usage_cpu_core_hours,
@@ -238,6 +241,9 @@ FROM (
             cast(json_parse(coalesce(nsli.namespace_labels, '{}')) as map(varchar, varchar)),
             cast(json_parse(li.pod_labels) as map(varchar, varchar))
         ) as pod_labels,
+        map_concat(
+            cast(json_parse(sli.persistentvolume_labels) as map(varchar, varchar))
+        ) as all_labels,
         max(li.resource_id) as resource_id,
         sum(li.pod_usage_cpu_core_seconds) / 3600.0 as pod_usage_cpu_core_hours,
         sum(li.pod_request_cpu_core_seconds) / 3600.0  as pod_request_cpu_core_hours,
@@ -260,6 +266,9 @@ FROM (
     LEFT JOIN cte_ocp_namespace_label_line_item_daily as nsli
         ON nsli.namespace = li.namespace
             AND nsli.usage_start = date(li.interval_start)
+    LEFT JOIN cte_volume_nodes as sli
+        ON sli.namespace = li.namespace
+            AND sli.usage_start = date(li.interval_start)
     LEFT JOIN cte_ocp_node_capacity as nc
         ON nc.usage_start = date(li.interval_start)
             AND nc.node = li.node
@@ -296,6 +305,7 @@ SELECT cast(uuid() as varchar) as uuid,
     sua.node,
     sua.resource_id,
     NULL as pod_labels,
+    NULL as all_labels,
     NULL as pod_usage_cpu_core_hours,
     NULL as pod_request_cpu_core_hours,
     NULL as pod_effective_usage_cpu_core_hours,
@@ -405,6 +415,7 @@ INSERT INTO postgres.{{schema | sqlsafe}}.reporting_ocpusagelineitem_daily_summa
     node,
     resource_id,
     pod_labels,
+    all_labels,
     pod_usage_cpu_core_hours,
     pod_request_cpu_core_hours,
     pod_effective_usage_cpu_core_hours,
@@ -441,6 +452,7 @@ SELECT cast(uuid as UUID),
     node,
     resource_id,
     json_parse(pod_labels),
+    json_parse(all_labels),
     pod_usage_cpu_core_hours,
     pod_request_cpu_core_hours,
     pod_effective_usage_cpu_core_hours,

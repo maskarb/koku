@@ -303,6 +303,8 @@ class OCPUsageLineItemDailySummary(models.Model):
 
     volume_labels = JSONField(null=True)
 
+    all_labels = JSONField(null=True)
+
     persistentvolumeclaim_capacity_gigabyte = models.DecimalField(max_digits=12, decimal_places=6, null=True)
 
     persistentvolumeclaim_capacity_gigabyte_months = models.DecimalField(max_digits=12, decimal_places=6, null=True)
