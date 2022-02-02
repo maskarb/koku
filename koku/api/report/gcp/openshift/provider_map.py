@@ -39,7 +39,7 @@ class OCPGCPProviderMap(ProviderMap):
             {
                 "provider": Provider.OCP_GCP,
                 "alias": "account_alias__account_alias",
-                "annotations": {},  # Annotations that should always happen
+                "annotations": {"cluster": "cluster_id"},  # Annotations that should always happen
                 "group_by_annotations": {
                     "account": {"account": "account_id"},
                     "gcp_project": {"gcp_project": "project_id"},
@@ -582,25 +582,33 @@ class OCPGCPProviderMap(ProviderMap):
                 ("account", "region"): OCPGCPCostSummaryByRegionP,
                 ("service",): OCPGCPCostSummaryByServiceP,
                 ("account", "service"): OCPGCPCostSummaryByServiceP,
+                ("cluster",): OCPGCPCostSummaryP,
             },
             "instance_type": {
                 "default": OCPGCPComputeSummaryP,
                 ("instance_type",): OCPGCPComputeSummaryP,
                 ("account", "instance_type"): OCPGCPComputeSummaryP,
                 ("account",): OCPGCPComputeSummaryP,
+                ("cluster",): OCPGCPComputeSummaryP,
             },
-            "storage": {"default": OCPGCPStorageSummaryP, ("account",): OCPGCPStorageSummaryP},
+            "storage": {
+                "default": OCPGCPStorageSummaryP,
+                ("account",): OCPGCPStorageSummaryP,
+                ("cluster",): OCPGCPStorageSummaryP,
+            },
             "database": {
                 "default": OCPGCPDatabaseSummaryP,
                 ("service",): OCPGCPDatabaseSummaryP,
                 ("account", "service"): OCPGCPDatabaseSummaryP,
                 ("account",): OCPGCPDatabaseSummaryP,
+                ("cluster",): OCPGCPDatabaseSummaryP,
             },
             "network": {
                 "default": OCPGCPNetworkSummaryP,
                 ("service",): OCPGCPNetworkSummaryP,
                 ("account", "service"): OCPGCPNetworkSummaryP,
                 ("account",): OCPGCPNetworkSummaryP,
+                ("cluster",): OCPGCPNetworkSummaryP,
             },
         }
         super().__init__(provider, report_type)
