@@ -347,7 +347,7 @@ FROM (
     SELECT pds.gcp_uuid,
         max(pds.cluster_id) as cluster_id,
         max(pds.cluster_alias) as cluster_alias,
-        max(pds.data_source) as data_source,
+        pds.data_source as data_source,
         pds.namespace,
         max(pds.node) as node,
         max(pds.persistentvolumeclaim) as persistentvolumeclaim,
@@ -391,7 +391,7 @@ FROM (
     FROM hive.{{schema | sqlsafe}}.reporting_ocpgcpcostlineitem_project_daily_summary_temp as pds
     JOIN cte_rankings as r
         ON pds.gcp_uuid = r.gcp_uuid
-    GROUP BY pds.gcp_uuid, pds.namespace
+    GROUP BY pds.gcp_uuid, pds.namespace, pds.data_source
 ) as ocp_gcp
 ;
 
