@@ -154,7 +154,7 @@ INSERT INTO hive.{{schema | sqlsafe}}.reporting_ocpgcpcostlineitem_project_daily
 SELECT gcp.uuid as gcp_uuid,
     max(ocp.cluster_id) as cluster_id,
     max(ocp.cluster_alias) as cluster_alias,
-    max(ocp.data_source), -- this should always be pod since its in the where clause
+    ocp.data_source, -- this should always be pod since its in the where clause
     ocp.namespace,
     max(ocp.node) as node,
     cast(NULL as varchar) as persistentvolumeclaim,
@@ -210,7 +210,7 @@ WHERE gcp.source = '{{gcp_source_uuid | sqlsafe}}'
     AND lpad(ocp.month, 2, '0') = {{month}} -- Zero pad the month when fewer than 2 characters
     AND ocp.day IN ({{days}})
     AND ocp.data_source = 'Pod' -- this cost is only associated with pod costs
-GROUP BY gcp.uuid, ocp.namespace, gcp.invoice_month
+GROUP BY gcp.uuid, ocp.namespace, gcp.invoice_month, ocp.data_source
 ;
 
 -- direct tag matching, these costs are split evenly between pod and storage since we don't have the info to quantify them separately
