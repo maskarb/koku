@@ -154,7 +154,7 @@ INSERT INTO hive.{{schema | sqlsafe}}.reporting_ocpgcpcostlineitem_project_daily
 SELECT gcp.uuid as gcp_uuid,
     max(ocp.cluster_id) as cluster_id,
     max(ocp.cluster_alias) as cluster_alias,
-    ocp.data_source,
+    max(ocp.data_source), -- this should always be pod since its in the where clause
     ocp.namespace,
     max(ocp.node) as node,
     cast(NULL as varchar) as persistentvolumeclaim,
