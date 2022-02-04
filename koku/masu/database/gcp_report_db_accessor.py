@@ -529,7 +529,7 @@ class GCPReportDBAccessor(SQLScriptAtomicExecutorMixin, ReportDBAccessorBase):
 
     def delete_ocp_on_gcp_hive_partition_by_day(self, days, gcp_source, ocp_source, year, month):
         """Deletes partitions individually for each day in days list."""
-        table = "reporting_ocpgcpcostlineitem_project_daily_summary_p"
+        table = "reporting_ocpgcpcostlineitem_project_daily_summary"
         retries = settings.HIVE_PARTITION_DELETE_RETRIES
         if self.table_exists_trino(table):
             LOG.info(
