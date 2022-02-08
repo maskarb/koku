@@ -31,6 +31,7 @@ class GCPReportParquetProcessor(ReportParquetProcessorBase):
             numeric_columns.append("credits")
         elif "daily" in s3_path:
             table_name = PRESTO_LINE_ITEM_DAILY_TABLE
+            numeric_columns.append("credits")
         else:
             table_name = PRESTO_LINE_ITEM_TABLE
         column_types = {"numeric_columns": numeric_columns, "date_columns": date_columns, "boolean_columns": []}
