@@ -114,25 +114,6 @@ class OCPReportQueryHandler(ReportQueryHandler):
 
         return output
 
-    # def get_cost_models(self, report):
-    #     """Get the cost models associated with the report."""
-    #     cost_model_uuid = report.source_uuid.uuid
-    #     cost_model = CostModelMap.objects.filter(provider_uuid=cost_model_uuid)
-    #     return cost_model
-
-    # def _get_base_currency(self, data):
-    #     """get the base currency based on cost model id."""
-    #     cost_model = self.get_cost_models(data)
-    #     if cost_model:
-    #         cost_uuid = cost_model.values("cost_model_id").get()["cost_model_id"]
-    #         currency = CostModel.objects.get(uuid = cost_uuid).currency
-    #     else:
-    #         #need to get request context for this function
-    #         # currency = get_currency(self.context.get("request"))
-    #         currency = KOKU_DEFAULT_CURRENCY
-
-    #     return currency
-
     def _get_base_currency(self, source_uuid):
         """Look up the report base currency."""
         pm = ProviderManager(source_uuid)
@@ -205,7 +186,6 @@ class OCPReportQueryHandler(ReportQueryHandler):
 
         with tenant_context(self.tenant):
             query = self.query_table.objects.filter(self.query_filter)
-            # self._currency_calc(query)
             query_data = query.annotate(**self.annotations)
             group_by_value = self._get_group_by()
             query_group_by = ["date"] + group_by_value
@@ -218,9 +198,9 @@ class OCPReportQueryHandler(ReportQueryHandler):
             query_data = query_data.values(*query_group_by).annotate(**self.report_annotations)
             print("BEFORE DATA: ", query_data)
 
-            query_data = self.return_total_query(query_data)
-
+            total_query = self.return_total_query(query_data)
             print("AFTER DATA: ", query_data)
+
             if self._limit and query_data:
                 query_data = self._group_by_ranks(query, query_data)
                 if not self.parametFers.get("order_by"):
@@ -302,7 +282,8 @@ class OCPReportQueryHandler(ReportQueryHandler):
         }
         ordered_total.update(query_sum)
 
-        self.query_sum = ordered_total
+        # self.query_sum = ordered_total
+        self.query_sum = total_query
         self.query_data = data
         return self._format_query_response()
 
