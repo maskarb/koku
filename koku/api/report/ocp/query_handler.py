@@ -14,10 +14,13 @@ from decimal import InvalidOperation
 from django.db.models import F
 from tenant_schemas.utils import tenant_context
 
+from api.currency.models import ExchangeRates
 from api.models import Provider
+from api.provider.provider_manager import ProviderManager
 from api.report.ocp.provider_map import OCPProviderMap
 from api.report.queries import is_grouped_by_project
 from api.report.queries import ReportQueryHandler
+from koku.settings import KOKU_DEFAULT_CURRENCY
 
 LOG = logging.getLogger(__name__)
 
@@ -37,7 +40,7 @@ class OCPReportQueryHandler(ReportQueryHandler):
         self._mapper = OCPProviderMap(provider=self.provider, report_type=parameters.report_type)
         self.group_by_options = self._mapper.provider_map.get("group_by_options")
         self._limit = parameters.get_filter("limit")
-
+        self.currency = parameters.parameters.get("currency")
         # We need to overwrite the default pack definitions with these
         # Order of the keys matters in how we see it in the views.
         ocp_pack_keys = {
@@ -111,6 +114,85 @@ class OCPReportQueryHandler(ReportQueryHandler):
 
         return output
 
+    # def get_cost_models(self, report):
+    #     """Get the cost models associated with the report."""
+    #     cost_model_uuid = report.source_uuid.uuid
+    #     cost_model = CostModelMap.objects.filter(provider_uuid=cost_model_uuid)
+    #     return cost_model
+
+    # def _get_base_currency(self, data):
+    #     """get the base currency based on cost model id."""
+    #     cost_model = self.get_cost_models(data)
+    #     if cost_model:
+    #         cost_uuid = cost_model.values("cost_model_id").get()["cost_model_id"]
+    #         currency = CostModel.objects.get(uuid = cost_uuid).currency
+    #     else:
+    #         #need to get request context for this function
+    #         # currency = get_currency(self.context.get("request"))
+    #         currency = KOKU_DEFAULT_CURRENCY
+
+    #     return currency
+
+    def _get_base_currency(self, source_uuid):
+        """Look up the report base currency."""
+        pm = ProviderManager(source_uuid)
+        cost_models = pm.get_cost_models(self.tenant)
+        if cost_models:
+            cm = cost_models[0]
+            return cm.currency
+        return KOKU_DEFAULT_CURRENCY
+
+    def _get_exchange_rate(self, base_currency):
+        """Look up the exchange rate for the target currency."""
+        exchange_rates = {}
+        for currency in [self.currency, base_currency]:
+            try:
+                exchange_rate = ExchangeRates.objects.get(currency_type=currency.lower())
+                exchange_rates[currency] = exchange_rate.exchange_rate
+            except Exception as e:
+                LOG.error(e)
+                return 1
+        return Decimal(exchange_rates[self.currency] / exchange_rates[base_currency])
+
+    def return_total_query(self, total_queryset):
+        """Return total query data for calculate_total."""
+        total_query = {
+            "date": None,
+            "infra_total": 0,
+            "infra_raw": 0,
+            "infra_usage": 0,
+            "infra_markup": 0,
+            "sup_raw": 0,
+            "sup_usage": 0,
+            "sup_markup": 0,
+            "sup_total": 0,
+            "cost_total": 0,
+            "cost_raw": 0,
+            "cost_usage": 0,
+            "cost_markup": 0,
+        }
+        for query_set in total_queryset:
+            base = self._get_base_currency(query_set["source_uuid_id"])
+            total_query["date"] = query_set.get("date")
+            exchange_rate = self._get_exchange_rate(base)
+            for value in [
+                "infra_total",
+                "infra_raw",
+                "infra_usage",
+                "infra_markup",
+                "sup_raw",
+                "sup_total",
+                "sup_usage",
+                "sup_markup",
+                "cost_total",
+                "cost_raw",
+                "cost_usage",
+                "cost_markup",
+            ]:
+                orig_value = total_query[value]
+                total_query[value] = round(orig_value + Decimal(query_set.get(value)) * Decimal(exchange_rate), 9)
+        return total_query
+
     def execute_query(self):  # noqa: C901
         """Execute query and return provided data.
 
@@ -123,18 +205,25 @@ class OCPReportQueryHandler(ReportQueryHandler):
 
         with tenant_context(self.tenant):
             query = self.query_table.objects.filter(self.query_filter)
+            # self._currency_calc(query)
             query_data = query.annotate(**self.annotations)
             group_by_value = self._get_group_by()
-
             query_group_by = ["date"] + group_by_value
             query_order_by = ["-date"]
+
+            if self._report_type == "costs":
+                query_group_by.append("source_uuid_id")
+
             query_order_by.extend(self.order)  # add implicit ordering
-
             query_data = query_data.values(*query_group_by).annotate(**self.report_annotations)
+            print("BEFORE DATA: ", query_data)
 
+            query_data = self.return_total_query(query_data)
+
+            print("AFTER DATA: ", query_data)
             if self._limit and query_data:
                 query_data = self._group_by_ranks(query, query_data)
-                if not self.parameters.get("order_by"):
+                if not self.parametFers.get("order_by"):
                     # override implicit ordering when using ranked ordering.
                     query_order_by[-1] = "rank"
 
