@@ -190,16 +190,13 @@ class OCPReportQueryHandler(ReportQueryHandler):
             group_by_value = self._get_group_by()
             query_group_by = ["date"] + group_by_value
             query_order_by = ["-date"]
-
+            print(self._report_type)
             if self._report_type == "costs":
+                print("GROUPING BY SOURCE UUID")
                 query_group_by.append("source_uuid_id")
 
             query_order_by.extend(self.order)  # add implicit ordering
             query_data = query_data.values(*query_group_by).annotate(**self.report_annotations)
-            print("BEFORE DATA: ", query_data)
-
-            total_query = self.return_total_query(query_data)
-            print("AFTER DATA: ", query_data)
 
             if self._limit and query_data:
                 query_data = self._group_by_ranks(query, query_data)
@@ -210,6 +207,8 @@ class OCPReportQueryHandler(ReportQueryHandler):
             # Populate the 'total' section of the API response
             if query.exists():
                 aggregates = self._mapper.report_type_map.get("aggregates")
+                if self._report_type == "costs":
+                    total_query = self.return_total_query(query_data)
                 metric_sum = query.aggregate(**aggregates)
                 query_sum = {key: metric_sum.get(key) for key in aggregates}
 
