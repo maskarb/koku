@@ -156,22 +156,12 @@ class OCPReportQueryHandler(ReportQueryHandler):
             base = self._get_base_currency(query_set["source_uuid_id"])
             total_query["date"] = query_set.get("date")
             exchange_rate = self._get_exchange_rate(base)
-            for value in [
-                "infra_total",
-                "infra_raw",
-                "infra_usage",
-                "infra_markup",
-                "sup_raw",
-                "sup_total",
-                "sup_usage",
-                "sup_markup",
-                "cost_total",
-                "cost_raw",
-                "cost_usage",
-                "cost_markup",
-            ]:
-                orig_value = total_query[value]
-                total_query[value] = round(orig_value + Decimal(query_set.get(value)) * Decimal(exchange_rate), 9)
+            for value in ["infrastructure", "supplementary", "cost"]:
+                for v in ["raw", "markup", "usage", "distributed", "total"]:
+                    orig_value = query_set.get(value)[v]["value"]
+                    total_query[value] = round(orig_value + Decimal(orig_value) * Decimal(exchange_rate), 9)
+                    # print("TOTAL QUERY VALUE", total_query[value])
+                    # print("TOTAL QUERY: ", total_query)
         return total_query
 
     def execute_query(self):  # noqa: C901
@@ -207,8 +197,6 @@ class OCPReportQueryHandler(ReportQueryHandler):
             # Populate the 'total' section of the API response
             if query.exists():
                 aggregates = self._mapper.report_type_map.get("aggregates")
-                if self._report_type == "costs":
-                    total_query = self.return_total_query(query_data)
                 metric_sum = query.aggregate(**aggregates)
                 query_sum = {key: metric_sum.get(key) for key in aggregates}
 
@@ -276,13 +264,18 @@ class OCPReportQueryHandler(ReportQueryHandler):
             sum_init["usage_units"] = self._mapper.usage_units_key
         query_sum.update(sum_init)
 
+        if self._report_type == "costs":
+            query_data = self.return_total_query(query_data)
+
         ordered_total = {
             total_key: query_sum[total_key] for total_key in self.report_annotations.keys() if total_key in query_sum
         }
         ordered_total.update(query_sum)
 
-        # self.query_sum = ordered_total
-        self.query_sum = total_query
+        self.query_sum = ordered_total
+        # self.query_sum = total_query
+        print("DATA: ", data)
+        print("QUERY DATA: ", query_data)
         self.query_data = data
         return self._format_query_response()
 
