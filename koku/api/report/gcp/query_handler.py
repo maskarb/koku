@@ -54,7 +54,6 @@ class GCPReportQueryHandler(ReportQueryHandler):
             getattr(self, "_mapper")
         except AttributeError:
             self._mapper = GCPProviderMap(provider=self.provider, report_type=parameters.report_type)
-
         self.group_by_options = self._mapper.provider_map.get("group_by_options")
         self._limit = parameters.get_filter("limit")
         self.is_csv_output = parameters.accept_type and "text/csv" in parameters.accept_type
@@ -168,10 +167,12 @@ class GCPReportQueryHandler(ReportQueryHandler):
         data = []
 
         with tenant_context(self.tenant):
+            is_csv_output = self.parameters.accept_type and "text/csv" in self.parameters.accept_type
             query = self.query_table.objects.filter(self.query_filter)
             query_data = query.annotate(**self.annotations)
-
             query_group_by = ["date"] + self._get_group_by()
+            if self._report_type == "costs":
+                query_group_by.append("currency")
             query_order_by = ["-date"]
             query_order_by.extend(self.order)  # add implicit ordering
 
@@ -190,8 +191,6 @@ class GCPReportQueryHandler(ReportQueryHandler):
 
             if self._delta:
                 query_data = self.add_deltas(query_data, query_sum)
-
-            is_csv_output = self.parameters.accept_type and "text/csv" in self.parameters.accept_type
 
             def check_if_valid_date_str(date_str):
                 """Check to see if a valid date has been passed in."""
@@ -247,8 +246,11 @@ class GCPReportQueryHandler(ReportQueryHandler):
         ordered_total = {total_key: query_sum[total_key] for total_key in key_order if total_key in query_sum}
         ordered_total.update(query_sum)
 
-        self.query_sum = ordered_total
         self.query_data = data
+        self.query_sum = ordered_total
+        groupby = self._get_group_by()
+        if self._report_type == "costs" and not is_csv_output:
+            self.query_data = self.format_for_ui_recursive(groupby, self.query_data)
         return self._format_query_response()
 
     def calculate_total(self, **units):
@@ -262,15 +264,20 @@ class GCPReportQueryHandler(ReportQueryHandler):
 
         """
         query_group_by = ["date"] + self._get_group_by()
+        if self._report_type == "costs":
+            query_group_by.append("currency")
+
         query = self.query_table.objects.filter(self.query_filter)
         query_data = query.annotate(**self.annotations)
         query_data = query_data.values(*query_group_by)
         aggregates = self._mapper.report_type_map.get("aggregates")
-
-        total_query = query.aggregate(**aggregates)
-        for unit_key, unit_value in units.items():
-            total_query[unit_key] = unit_value
+        if self._report_type == "costs":
+            total_queryset = query_data.annotate(**aggregates)
+            total_query = self.return_total_query(total_queryset)
+        else:
+            total_query = query.aggregate(**aggregates)
+        for unit_key, _ in units.items():
+            total_query[unit_key] = self.currency
 
         self._pack_data_object(total_query, **self._mapper.PACK_DEFINITIONS)
-
         return total_query

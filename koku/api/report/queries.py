@@ -25,10 +25,15 @@ from django.db.models.expressions import OrderBy
 from django.db.models.expressions import RawSQL
 from django.db.models.functions import Rank
 
+from api.currency.models import ExchangeRates
 from api.models import Provider
 from api.query_filter import QueryFilter
 from api.query_filter import QueryFilterCollection
 from api.query_handler import QueryHandler
+from koku.settings import KOKU_DEFAULT_CURRENCY
+from reporting.provider.aws.models import AWSCostSummaryByAccountP
+from reporting.provider.azure.models import AzureCostSummaryByAccountP
+from reporting.provider.gcp.models import GCPCostSummaryByAccountP
 
 LOG = logging.getLogger(__name__)
 
@@ -72,13 +77,13 @@ class ReportQueryHandler(QueryHandler):
         """
         LOG.debug(f"Query Params: {parameters}")
         super().__init__(parameters)
-
         self._tag_keys = parameters.tag_keys
         if not hasattr(self, "_report_type"):
             self._report_type = parameters.report_type
         self._delta = parameters.delta
         self._offset = parameters.get_filter("offset", default=0)
         self.query_delta = {"value": None, "percent": None}
+        self.currency = parameters.parameters.get("currency")
 
         self.query_filter = self._get_filter()
 
@@ -103,6 +108,50 @@ class ReportQueryHandler(QueryHandler):
     def report_annotations(self):
         """Return annotations with the correct capacity field."""
         return self._mapper.report_type_map.get("annotations", {})
+
+    def return_total_query(self, total_queryset):
+        """Return total query data for calculate_total."""
+        total_query = {
+            "date": None,
+            "infra_total": 0,
+            "infra_raw": 0,
+            "infra_usage": 0,
+            "infra_markup": 0,
+            "sup_raw": 0,
+            "sup_usage": 0,
+            "sup_markup": 0,
+            "sup_total": 0,
+            "cost_total": 0,
+            "cost_raw": 0,
+            "cost_usage": 0,
+            "cost_markup": 0,
+        }
+        for query_set in total_queryset:
+            codes = {
+                Provider.PROVIDER_AWS: "currency_code",
+                Provider.PROVIDER_AZURE: "currency",
+                Provider.PROVIDER_GCP: "currency",
+            }
+            base = query_set.get(codes.get(self.provider))
+            total_query["date"] = query_set.get("date")
+            exchange_rate = self._get_exchange_rate(base)
+            for value in [
+                "infra_total",
+                "infra_raw",
+                "infra_usage",
+                "infra_markup",
+                "sup_raw",
+                "sup_total",
+                "sup_usage",
+                "sup_markup",
+                "cost_total",
+                "cost_raw",
+                "cost_usage",
+                "cost_markup",
+            ]:
+                orig_value = total_query[value]
+                total_query[value] = round(orig_value + Decimal(query_set.get(value)) * Decimal(exchange_rate), 9)
+        return total_query
 
     @cached_property
     def query_table(self):
@@ -390,7 +439,6 @@ class ReportQueryHandler(QueryHandler):
         inherent_group_by = self._mapper._report_type_map.get("group_by")
         if inherent_group_by and not (group_by and self._limit):
             group_by = group_by + list(set(inherent_group_by) - set(group_by))
-
         return group_by
 
     def _get_tag_group_by(self):
@@ -579,6 +627,170 @@ class ReportQueryHandler(QueryHandler):
         data.update(new_data)
         return data
 
+    def _get_base_currency(self, source_uuid):
+        """Look up the report base currency."""
+        provider_table_map = {
+            Provider.PROVIDER_AWS: AWSCostSummaryByAccountP,
+            Provider.PROVIDER_AZURE: AzureCostSummaryByAccountP,
+            Provider.PROVIDER_GCP: GCPCostSummaryByAccountP
+            # extend this to the other providers
+        }
+        try:
+            base_currency = provider_table_map.get(self.provider).objects.filter(source_uuid=source_uuid).first()
+            if self.provider == Provider.PROVIDER_AWS:
+                return base_currency.currency_code
+            else:
+                return base_currency.currency
+        except Exception as e:
+            LOG.error(e)
+        return KOKU_DEFAULT_CURRENCY
+
+    def _get_exchange_rate(self, base_currency):
+        """Look up the exchange rate for the target currency."""
+        exchange_rates = {}
+        for currency in [self.currency, base_currency]:
+            try:
+                exchange_rate = ExchangeRates.objects.get(currency_type=currency.lower())
+                exchange_rates[currency] = exchange_rate.exchange_rate
+            except Exception as e:
+                LOG.error(e)
+                return 1
+        return Decimal(exchange_rates[self.currency] / exchange_rates[base_currency])
+
+    def _apply_total_exchange(self, data):
+        source_uuid = data.get("source_uuid")
+        base_currency = KOKU_DEFAULT_CURRENCY
+        if self._report_type == "costs":
+            exchange_rate = 1
+            if source_uuid:
+                base_currency = self._get_base_currency(source_uuid[0])
+                exchange_rate = self._get_exchange_rate(base_currency)
+            for key, value in data.items():
+                if key in ["infrastructure", "supplementary", "cost"]:
+                    for in_key, in_value in value.items():
+                        for this_key, this_value in in_value.items():
+                            if this_key in ["units"]:
+                                # change to currency code
+                                in_value[this_key] = self.currency
+                            elif this_key in ["value"]:
+                                in_value[this_key] = round(Decimal(this_value) * Decimal(exchange_rate), 9)
+                                # multiply and override
+                            value[in_key] = in_value
+
+        return data
+
+    def _apply_exchange_rate(self, data):
+        """Apply the exchange rate to the data."""
+        for dictionary in data:
+            new_values = []
+            for key, values in dictionary.items():
+                if type(values) == list:
+                    for day in values:
+                        if type(day) == dict:
+                            day = self._apply_total_exchange(day)
+                        new_values.append(day)
+                    dictionary[key] = new_values
+        return data
+
+    def format_for_ui_recursive(self, groupby, out_data, org_unit_applied=False, level=-1, org_id=None, org_type=None):
+        """Format the data for the UI."""
+        level += 1
+        overall = []
+        print("\n\n\nout data: ")
+        print(out_data)
+        if out_data:
+            if org_unit_applied:
+                groupby = ["org_entitie"] + groupby
+                if "account" in groupby:
+                    groupby.remove("account")
+            if level == len(groupby):
+                new_value = []
+                for value in out_data:
+                    # org_applied = False
+                    # if "org_entitie" in groupby:
+                    #     org_applied = True
+                    new_values = self.aggregate_currency_codes_ui(value)
+                    new_value.append(new_values)
+                return new_value
+            else:
+                group = groupby[level]
+                if group.startswith("tags"):
+                    group = group[6:]
+                for value in out_data:
+                    new_out_data = value.get(group + "s")
+                    org_id = value.get("id")
+                    org_type = value.get("type")
+                    value[group + "s"] = self.format_for_ui_recursive(
+                        groupby, new_out_data, level=level, org_id=org_id, org_type=org_type
+                    )
+                    overall.append(value)
+        return overall
+
+    def aggregate_currency_codes_ui(self, out_data):
+        """Aggregate currency code info for UI."""
+        all_group_by = self._get_group_by()
+        codes = {
+            Provider.PROVIDER_AWS: "currency_codes",
+            Provider.PROVIDER_AZURE: "currencys",
+            Provider.PROVIDER_GCP: "currencys",
+            Provider.OCP_AZURE: "currencys",
+            Provider.OCP_GCP: "currencys",
+            Provider.OCP_AWS: "currency_codes",
+            Provider.OCP_ALL: "currency_codes",
+        }
+        currency_codes = out_data.get(codes.get(self.provider))
+        total_query = self.aggregate_currency_codes(currency_codes, all_group_by)
+        out_data["values"] = [total_query]
+        return out_data
+
+    def aggregate_currency_codes(self, currency_codes, all_group_by):  # noqa: C901
+        """Aggregate and format the data after currency."""
+        total_query = {
+            "date": None,
+            "source_uuid": [],
+            "infrastructure": {
+                "raw": {"value": 0, "units": self.currency},
+                "markup": {"value": 0, "units": self.currency},
+                "usage": {"value": 0, "units": self.currency},
+                "total": {"value": 0, "units": self.currency},
+            },
+            "supplementary": {
+                "raw": {"value": 0, "units": self.currency},
+                "markup": {"value": 0, "units": self.currency},
+                "usage": {"value": 0, "units": self.currency},
+                "total": {"value": 0, "units": self.currency},
+            },
+            "cost": {
+                "raw": {"value": 0, "units": self.currency},
+                "markup": {"value": 0, "units": self.currency},
+                "usage": {"value": 0, "units": self.currency},
+                "total": {"value": 0, "units": self.currency},
+            },
+        }
+        for currency_entry in currency_codes:
+            values = currency_entry.get("values")
+            for data in values:
+                source_uuids = total_query.get("source_uuid")
+                total_query["date"] = data.get("date")
+                total_query["source_uuid"] = source_uuids + data.get("source_uuid")
+                for delta in ["delta_value", "delta_percent"]:
+                    if data.get(delta):
+                        total_query[delta] = total_query.get(delta, 0) + data.get(delta)
+                for item in ["account", "account_alias", "tags_exist"]:
+                    if data.get(item):
+                        total_query[item] = data.get(item)
+                for group in all_group_by:
+                    if group.startswith("tags"):
+                        group = group[6:]
+                    total_query[group] = data.get(group)
+                for structure in ["infrastructure", "supplementary", "cost"]:
+                    for each in ["raw", "markup", "usage", "total"]:
+                        orig_value = total_query.get(structure).get(each).get("value")
+                        total_query[structure][each]["value"] = Decimal(
+                            data.get(structure).get(each).get("value")
+                        ) + Decimal(orig_value)
+        return total_query
+
     def _transform_data(self, groups, group_index, data):
         """Transform dictionary data points to lists."""
         tag_prefix = self._mapper.tag_column + "__"
@@ -608,6 +820,12 @@ class ReportQueryHandler(QueryHandler):
                 group_label = f"no-{group_title}"
             cur = {group_title: group_label, label: self._transform_data(groups, next_group_index, group_value)}
             out_data.append(cur)
+        if self.provider != Provider.PROVIDER_OCP:
+            out_data = self._apply_exchange_rate(out_data)
+        else:
+            print("We are an OCP provider")
+            out_data = self._apply_exchange_rate(out_data)
+            # need to get the cost model associated with the provider
 
         return out_data
 
