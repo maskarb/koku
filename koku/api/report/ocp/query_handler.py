@@ -5,7 +5,6 @@
 """OCP Query Handling for Reports."""
 import copy
 import datetime
-from locale import currency
 import logging
 from collections import defaultdict
 from decimal import Decimal
@@ -115,59 +114,30 @@ class OCPReportQueryHandler(ReportQueryHandler):
 
         return output
 
-
     def _apply_total_exchange(self, data):
         """Overwrite this function because the structure is different for ocp."""
-        source_uuid = data.get("source_uuid_id")
-        print("\n\n\nsource_uuid")
-        print(source_uuid)
+        source_uuid = data.get("source_uuid")
         base_currency = KOKU_DEFAULT_CURRENCY
         if self._report_type == "costs":
             exchange_rate = 1
             if source_uuid:
-                base_currency = self._get_base_currency(source_uuid)
+                base_currency = self._get_base_currency(source_uuid[0])
                 exchange_rate = self._get_exchange_rate(base_currency)
-                print("\n\n\n\ndata: ")
-                print(data)
-                print("this is the exchange rate: ")
-                print(exchange_rate)
-                data["currency"] = base_currency
-                values = data.get("values")
                 for key, value in data.items():
-                    print("key")
-                    print(key)
-                    print("value")
-                    print(value)
-                    for key, value in data.items():
-                        if key in ["infrastructure", "supplementary", "cost"]:
-                            for in_key, in_value in value.items():
-                                for this_key, this_value in in_value.items():
-                                    if this_key in ["units"]:
-                                        # change to currency code
-                                        in_value[this_key] = self.currency
-                                    elif this_key in ["value"]:
-                                        in_value[this_key] = round(Decimal(this_value) * Decimal(exchange_rate), 9)
-                                        # multiply and override
-                                    value[in_key] = in_value
-                    # if (
-                    #     key.endswith("raw")
-                    #     or key.endswith("usage")
-                    #     or key.endswith("distributed")
-                    #     or key.endswith("markup")
-                    #     or key.endswith("total")
-                    # ):
-                    #     print("\n\n\nupdating data of ")
-                    #     print(key)
-                    #     data[key] = (Decimal(value) / Decimal(exchange_rate)) * Decimal(exchange_rate)
-                    # elif key.endswith("units"):
-                    #     print("\n\n\nupdating currency")
-                    #     data[key] = self.currency
+                    if (
+                        key.endswith("raw")
+                        or key.endswith("usage")
+                        or key.endswith("distributed")
+                        or key.endswith("markup")
+                        or key.endswith("total")
+                    ):
+                        data[key] = (Decimal(value) / Decimal(exchange_rate)) * Decimal(exchange_rate)
+                    elif key.endswith("units"):
+                        data[key] = self.currency
         return data
 
     def _get_base_currency(self, source_uuid):
         """Look up the report base currency."""
-        print("\n\nsource uuid: ")
-        print(source_uuid)
         pm = ProviderManager(source_uuid)
         cost_models = pm.get_cost_models(self.tenant)
         if cost_models:
@@ -186,37 +156,6 @@ class OCPReportQueryHandler(ReportQueryHandler):
                 LOG.error(e)
                 return 1
         return Decimal(exchange_rates[self.currency] / exchange_rates[base_currency])
-
-    # def return_total_query(self, total_queryset):
-    #     """Return total query data for calculate_total."""
-    #     total_query = {
-    #         "date": None,
-    #         "infra_total": 0,
-    #         "infra_raw": 0,
-    #         "infra_usage": 0,
-    #         "infra_markup": 0,
-    #         "sup_raw": 0,
-    #         "sup_usage": 0,
-    #         "sup_markup": 0,
-    #         "sup_total": 0,
-    #         "cost_total": 0,
-    #         "cost_raw": 0,
-    #         "cost_usage": 0,
-    #         "cost_markup": 0,
-    #     }
-    #     for query_set in total_queryset:
-    #         print("\b\b\b\bqueryset: ")
-    #         print(total_queryset)
-    #         base = self._get_base_currency(query_set["source_uuid_id"])
-    #         total_query["date"] = query_set.get("date")
-    #         exchange_rate = self._get_exchange_rate(base)
-    #         for value in ["infrastructure", "supplementary", "cost"]:
-    #             for v in ["raw", "markup", "usage", "distributed", "total"]:
-    #                 orig_value = query_set.get(value)[v]["value"]
-    #                 total_query[value] = round(orig_value + Decimal(orig_value) * Decimal(exchange_rate), 9)
-    #                 # print("TOTAL QUERY VALUE", total_query[value])
-    #                 # print("TOTAL QUERY: ", total_query)
-    #     return total_query
 
     def return_total_query(self, total_queryset):
         """Return total query data for calculate_total."""
@@ -240,6 +179,7 @@ class OCPReportQueryHandler(ReportQueryHandler):
         }
         for query_set in total_queryset:
             base = self._get_base_currency(query_set["source_uuid_id"])
+            print("BASE: ", base)
             total_query["date"] = query_set.get("date")
             exchange_rate = self._get_exchange_rate(base)
             total_query["date"] = query_set.get("date")
@@ -263,16 +203,12 @@ class OCPReportQueryHandler(ReportQueryHandler):
                 orig_value = total_query[value]
                 total_query[value] = round(orig_value + Decimal(query_set.get(value)) * Decimal(exchange_rate), 9)
 
-        print("\n\n\n\ntotal query: ")
-        print(total_query)
         return total_query
 
     def format_for_ui_recursive(self, groupby, out_data, org_unit_applied=False, level=-1, org_id=None, org_type=None):
         """Format the data for the UI."""
         level += 1
         overall = []
-        print("\n\n\nout data: ")
-        print(out_data)
         if out_data:
             if org_unit_applied:
                 groupby = ["org_entitie"] + groupby
@@ -281,9 +217,6 @@ class OCPReportQueryHandler(ReportQueryHandler):
             if level == len(groupby):
                 new_value = []
                 for value in out_data:
-                    # org_applied = False
-                    # if "org_entitie" in groupby:
-                    #     org_applied = True
                     new_values = self.aggregate_currency_codes_ui(value)
                     new_value.append(new_values)
                 return new_value
@@ -315,63 +248,12 @@ class OCPReportQueryHandler(ReportQueryHandler):
             Provider.PROVIDER_OCP: "source_uuid_ids",
         }
         currency_codes = out_data.get(codes.get(self.provider))
-        total_query, new_codes = self.aggregate_currency_codes(currency_codes, all_group_by)
+        total_query = self.aggregate_currency_codes(currency_codes, all_group_by)
         out_data["values"] = [total_query]
-        currency_list = []
-        for key, value in new_codes.items():
-            cur_dictionary = {"currency": key, "values": [value]}
-            currency_list.append(cur_dictionary)
-        out_data.pop("source_uuid_ids")
-        out_data["currencys"] = currency_list
         return out_data
-
-    def get_currency_codes_ocp(self, currency_codes, all_group_by):
-        """Format the same as the other endpoints."""
-        currencys = {}
-
-        for currency_entry in currency_codes:
-            values = currency_entry.get("values")
-            for data in values:
-                currency = data.get("currency")
-                if currency not in currencys.keys():
-                    print("adding currency to dictionary")
-                    currencys[currency] = data
-                else:
-                    print("currency is already in dictionary")
-                    print("\n\ncurrent data")
-                    print(data)
-                    print("what is in currencies dictionary")
-                    print(currencys.get(currency))
-                    base_values = currencys.get(currency)
-                    for value in ["source_uuid", "clusters"]:
-                        base_val = base_values.get(value)
-                        new_val = data.get(value)
-                        base_values[value] = base_val + new_val
-                    for delta in ["delta_value", "delta_percent"]:
-                        if data.get(delta):
-                            base_values[delta] = base_values.get(delta, 0) + data.get(delta)
-                    for item in ["account", "account_alias", "tags_exist"]:
-                        if data.get(item):
-                            base_values[item] = data.get(item)
-                    for group in all_group_by:
-                        if group.startswith("tags"):
-                            group = group[6:]
-                        base_values[group] = data.get(group)
-                    for structure in ["infrastructure", "supplementary", "cost"]:
-                        for each in ["raw", "markup", "usage", "total", "distributed"]:
-                            orig_value = base_values.get(structure).get(each).get("value")
-                            base_values[structure][each]["value"] = Decimal(
-                                data.get(structure).get(each).get("value")
-                            ) + Decimal(orig_value)
-        print("\n\n\n\nNEW STRUCTURE:")
-        print(currencys)
-        return currencys
-
 
     def aggregate_currency_codes(self, currency_codes, all_group_by):  # noqa: C901
         """Aggregate and format the data after currency."""
-        new_copy = copy.deepcopy(currency_codes)
-        new_codes = self.get_currency_codes_ocp(new_copy, all_group_by)
         total_query = {
             "date": None,
             "source_uuid": [],
@@ -419,7 +301,7 @@ class OCPReportQueryHandler(ReportQueryHandler):
                         total_query[structure][each]["value"] = Decimal(
                             data.get(structure).get(each).get("value")
                         ) + Decimal(orig_value)
-        return total_query, new_codes
+        return total_query
 
     def execute_query(self):  # noqa: C901
         """Execute query and return provided data.
@@ -446,8 +328,6 @@ class OCPReportQueryHandler(ReportQueryHandler):
             # annotations = self._mapper.report_type_map.get("annotations")
             # query_data = query_data.values(*query_group_by).annotate(**annotations)
             query_data = query_data.values(*query_group_by).annotate(**self.report_annotations)
-            print("\n\n\nquerydata query")
-            print(query_data.query)
 
             if self._limit and query_data:
                 query_data = self._group_by_ranks(query, query_data)
@@ -464,16 +344,13 @@ class OCPReportQueryHandler(ReportQueryHandler):
                 else:
                     metric_sum = query.aggregate(**aggregates)
                 query_sum = {key: metric_sum.get(key) for key in aggregates}
-            print("this is the metric sum: ")
-            print(metric_sum)
-            print("\n\n\nquery data: ")
-            print(query_data)
-            print("\nquery sum:")
-            print(query_sum)
+
+            print("QUERY SUM : ", query_sum)
 
             query_data, total_capacity = self.get_cluster_capacity(query_data)
             if total_capacity:
                 query_sum.update(total_capacity)
+            print("QUERY SUM 2 : ", query_sum)
 
             if self._delta:
                 query_data = self.add_deltas(query_data, query_sum)
@@ -528,21 +405,11 @@ class OCPReportQueryHandler(ReportQueryHandler):
                 groups = copy.deepcopy(query_group_by)
                 groups.remove("date")
                 data = self._apply_group_by(list(query_data), groups)
-                print("\n\n\ndata before: ")
-                print(data)
                 data = self._transform_data(query_group_by, 0, data)
-                print("data after:")
-                print(data)
 
         sum_init = {"cost_units": self.currency}
-        print("\n\n\n\nsum init :")
-        print(sum_init)
-        print("query_sum")
-        print(query_sum)
         query_sum.update(sum_init)
-
-        if self._report_type == "costs":
-            query_data = self.return_total_query(query_data)
+        print("QUERY SUM 3 : ", query_sum)
 
         ordered_total = {
             total_key: query_sum[total_key] for total_key in self.report_annotations.keys() if total_key in query_sum
@@ -554,7 +421,6 @@ class OCPReportQueryHandler(ReportQueryHandler):
             groupby = self._get_group_by()
             self.query_data = self.format_for_ui_recursive(groupby, self.query_data)
         self.query_sum = ordered_total
-        # self.query_sum = self._apply_total_exchange(ordered_total)
 
         return self._format_query_response()
 
