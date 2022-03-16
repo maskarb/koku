@@ -16,11 +16,9 @@ from tenant_schemas.utils import tenant_context
 
 from api.currency.models import ExchangeRates
 from api.models import Provider
-from api.provider.provider_manager import ProviderManager
 from api.report.ocp.provider_map import OCPProviderMap
 from api.report.queries import is_grouped_by_project
 from api.report.queries import ReportQueryHandler
-from koku.settings import KOKU_DEFAULT_CURRENCY
 
 LOG = logging.getLogger(__name__)
 
@@ -113,37 +111,6 @@ class OCPReportQueryHandler(ReportQueryHandler):
             output["delta"] = self.query_delta
 
         return output
-
-    def _apply_total_exchange(self, data):
-        """Overwrite this function because the structure is different for ocp."""
-        source_uuid = data.get("source_uuid")
-        base_currency = KOKU_DEFAULT_CURRENCY
-        if self._report_type == "costs":
-            exchange_rate = 1
-            if source_uuid:
-                base_currency = self._get_base_currency(source_uuid[0])
-                exchange_rate = self._get_exchange_rate(base_currency)
-                for key, value in data.items():
-                    if (
-                        key.endswith("raw")
-                        or key.endswith("usage")
-                        or key.endswith("distributed")
-                        or key.endswith("markup")
-                        or key.endswith("total")
-                    ):
-                        data[key] = (Decimal(value) / Decimal(exchange_rate)) * Decimal(exchange_rate)
-                    elif key.endswith("units"):
-                        data[key] = self.currency
-        return data
-
-    def _get_base_currency(self, source_uuid):
-        """Look up the report base currency."""
-        pm = ProviderManager(source_uuid)
-        cost_models = pm.get_cost_models(self.tenant)
-        if cost_models:
-            cm = cost_models[0]
-            return cm.currency
-        return KOKU_DEFAULT_CURRENCY
 
     def _get_exchange_rate(self, base_currency):
         """Look up the exchange rate for the target currency."""
