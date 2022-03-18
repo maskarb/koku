@@ -40,7 +40,7 @@ class OCPAWSTagsViewTest(IamTestCase):
                 "filter[time_scope_units]": case.get("unit"),
                 "key_only": True,
             }
-            url = url + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -60,7 +60,7 @@ class OCPAWSTagsViewTest(IamTestCase):
                 "filter[time_scope_units]": case.get("unit"),
                 "key_only": False,
             }
-            url = url + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             data = response.json()
@@ -79,7 +79,7 @@ class OCPAWSTagsViewTest(IamTestCase):
             "filter[time_scope_units]": "day",
             "filter[and:account]": ["account1", "account2"],
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -105,7 +105,7 @@ class OCPAWSTagsViewTest(IamTestCase):
         url = reverse("openshift-aws-tags")
         client = APIClient()
         params = {"key_only": False}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
@@ -119,7 +119,7 @@ class OCPAWSTagsViewTest(IamTestCase):
         url = reverse("openshift-aws-tags")
         client = APIClient()
         params = {"key_only": False, "filter[enabled]": False, "filter[cluster]": "OCP-on-AWS"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()

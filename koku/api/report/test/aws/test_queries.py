@@ -1477,7 +1477,7 @@ class AWSReportQueryTest(IamTestCase):
         handler = AWSTagQueryHandler(query_params)
         tag_keys = handler.get_tag_keys()
         filter_key = tag_keys[0]
-        tag_keys = ["tag:" + tag for tag in tag_keys]
+        tag_keys = [f"tag:{tag}" for tag in tag_keys]
 
         with tenant_context(self.tenant):
             totals = AWSCostEntryLineItemDailySummary.objects.filter(
@@ -1499,7 +1499,7 @@ class AWSReportQueryTest(IamTestCase):
         handler = AWSTagQueryHandler(query_params)
         tag_keys = handler.get_tag_keys()
         group_by_key = tag_keys[0]
-        tag_keys = ["tag:" + tag for tag in tag_keys]
+        tag_keys = [f"tag:{tag}" for tag in tag_keys]
 
         with tenant_context(self.tenant):
             totals = AWSCostEntryLineItemDailySummary.objects.filter(
@@ -1513,7 +1513,7 @@ class AWSReportQueryTest(IamTestCase):
         data = handler.execute_query()
         data_totals = data.get("total", {})
         data = data.get("data", [])
-        expected_keys = ["date", group_by_key + "s"]
+        expected_keys = ["date", f'{group_by_key}s']
         for entry in data:
             self.assertEqual(list(entry.keys()), expected_keys)
         result = data_totals.get("cost", {}).get("total", {}).get("value")
@@ -1526,7 +1526,7 @@ class AWSReportQueryTest(IamTestCase):
         handler = AWSTagQueryHandler(query_params)
         tag_keys = handler.get_tag_keys()
         group_by_key = tag_keys[0]
-        tag_keys = ["tag:" + tag for tag in tag_keys]
+        tag_keys = [f"tag:{tag}" for tag in tag_keys]
 
         totals_key = "cost"
         with tenant_context(self.tenant):
@@ -1548,7 +1548,7 @@ class AWSReportQueryTest(IamTestCase):
         data = handler.execute_query()
         data_totals = data.get("total", {})
         data = data.get("data", [])
-        expected_keys = ["date", group_by_key + "s"]
+        expected_keys = ["date", f'{group_by_key}s']
         for entry in data:
             self.assertEqual(list(entry.keys()), expected_keys)
         result = data_totals.get(totals_key, {}).get("total", {}).get("value")
@@ -1561,7 +1561,7 @@ class AWSReportQueryTest(IamTestCase):
         handler = AWSTagQueryHandler(query_params)
         tag_keys = handler.get_tag_keys()
         filter_key = tag_keys[0]
-        tag_keys = ["tag:" + tag for tag in tag_keys]
+        tag_keys = [f"tag:{tag}" for tag in tag_keys]
 
         with tenant_context(self.tenant):
             labels = (
@@ -1816,7 +1816,7 @@ class AWSReportQueryTest(IamTestCase):
                 for day in handler.query_data:
                     for org_entity in day.get("org_entities", []):
                         if group_by_option in reformats_data:
-                            group_key = group_by_option + "s"
+                            group_key = f'{group_by_option}s'
                             for group in org_entity.get(group_key, []):
                                 for value in group.get("values", []):
                                     self.assertIsNotNone(value.get("id"))
@@ -1911,7 +1911,7 @@ class AWSReportQueryTest(IamTestCase):
                 correctlst = [field.get(gb) for field in expected]
                 if correctlst and None in correctlst:
                     ind = correctlst.index(None)
-                    correctlst[ind] = "no-" + group_by
+                    correctlst[ind] = f"no-{group_by}"
                 for element in data:
                     lst = [field.get(group_by) for field in element.get(group_by + "s", [])]
                     if lst and correctlst:
@@ -1966,7 +1966,7 @@ class AWSReportQueryLogicalAndTest(IamTestCase):
             },
         }
 
-        for key in data_to_test.keys():
+        for key in data_to_test:
             query_params = self.mocked_query_params(data_to_test[key]["url"], AWSCostView)
             query_handler = AWSReportQueryHandler(query_params)
             query_output = query_handler.execute_query()
@@ -2085,12 +2085,8 @@ class AWSQueryHandlerTest(IamTestCase):
         query_params = self.mocked_query_params(url, AWSInstanceTypeView)
         handler = AWSReportQueryHandler(query_params)
         query_params = handler.filter_to_order_by(query_params)
-        region_1_exists = False
-        region_2_exists = False
-        if "eu-west-3" in query_params._parameters["group_by"]["region"]:
-            region_1_exists = True
-        if "us-west-1" in query_params._parameters["group_by"]["region"]:
-            region_2_exists = True
+        region_1_exists = "eu-west-3" in query_params._parameters["group_by"]["region"]
+        region_2_exists = "us-west-1" in query_params._parameters["group_by"]["region"]
         # Both regions should be in the resulting group_by list.
         self.assertTrue(region_1_exists)
         self.assertTrue(region_2_exists)
@@ -2173,7 +2169,7 @@ class AWSQueryHandlerTest(IamTestCase):
         cost_type = query_output.get("cost_type")
         self.assertEqual(cost_type, "blended_cost")
 
-    def test_source_uuid_mapping(self):  # noqa: C901
+    def test_source_uuid_mapping(self):    # noqa: C901
         """Test source_uuid is mapped to the correct source."""
         with tenant_context(self.tenant):
             aws_uuids = AWSCostEntryLineItemDailySummary.objects.distinct().values_list("source_uuid", flat=True)
@@ -2191,10 +2187,12 @@ class AWSQueryHandlerTest(IamTestCase):
                     for _, value in dictionary.items():
                         if isinstance(value, list):
                             for item in value:
-                                if isinstance(item, dict):
-                                    if "values" in item.keys():
-                                        value = item["values"][0]
-                                        source_uuid_list.extend(value.get("source_uuid"))
+                                if (
+                                    isinstance(item, dict)
+                                    and "values" in item.keys()
+                                ):
+                                    value = item["values"][0]
+                                    source_uuid_list.extend(value.get("source_uuid"))
         self.assertNotEqual(source_uuid_list, [])
         for source_uuid in source_uuid_list:
             self.assertIn(source_uuid, expected_source_uuids)

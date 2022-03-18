@@ -9,13 +9,14 @@ if __name__ == "__main__":
 
     r = requests.get(url).json()
     source_uuids = []
-    for source in r.get("data", []):
-        source_uuid = source.get("uuid")
-        if source_uuid:
-            source_uuids.append(source_uuid)
+    source_uuids.extend(
+        source_uuid
+        for source in r.get("data", [])
+        if (source_uuid := source.get("uuid"))
+    )
 
     for source_uuid in source_uuids:
-        delete_url = url + f"{source_uuid}/"
+        delete_url = f"{url}{source_uuid}/"
         print(f"Calling {delete_url}")
         r = requests.delete(delete_url)
         print(r)

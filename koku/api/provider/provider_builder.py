@@ -77,8 +77,7 @@ class ProviderBuilder:
         """Create request context object."""
         user = None
         customer = None
-        encoded_auth_header = self._identity_header.get("x-rh-identity")
-        if encoded_auth_header:
+        if encoded_auth_header := self._identity_header.get("x-rh-identity"):
             identity = json.loads(b64decode(encoded_auth_header))
             account = identity.get("identity", {}).get("account_number")
             username = identity.get("identity", {}).get("user", {}).get("username")

@@ -43,7 +43,7 @@ class UIFeatureAccess:
             access (dict) - an RBAC dict; see: koku.koku.middleware.IdentityHeaderMiddleware
 
         """
-        self.access_dict = access if access else {}
+        self.access_dict = access or {}
 
     def _get_access_value(self, key1, key2, default=None):
         """Return the access value from the inner dict."""
@@ -61,10 +61,11 @@ class UIFeatureAccess:
         if admin_user:
             return True
 
-        for key in self.access_keys:
-            if self._get_access_value(key, "read") or self._get_access_value(key, "write"):
-                return True
-        return False
+        return any(
+            self._get_access_value(key, "read")
+            or self._get_access_value(key, "write")
+            for key in self.access_keys
+        )
 
 
 class AWSUserAccess(UIFeatureAccess):
@@ -147,19 +148,23 @@ class UserAccessView(APIView):
         if flag.lower() == "true" and not beta:
             return Response({"data": False})
 
-        source_type = query_params.get("type")
-        if source_type:
-            source_accessor = next(
-                (item for item in self._source_types if item.get("type") == source_type.lower()), False
-            )
-            if source_accessor:
-                access_class = source_accessor.get("access_class")
-                pre_release_feature = source_accessor.get("pre_release_feature")
-                access_granted = access_class(user_access).access(admin_user, pre_release_feature)
-                return Response({"data": access_granted})
-            else:
+        if source_type := query_params.get("type"):
+            if not (
+                source_accessor := next(
+                    (
+                        item
+                        for item in self._source_types
+                        if item.get("type") == source_type.lower()
+                    ),
+                    False,
+                )
+            ):
                 return Response({f"Unknown source type: {source_type}"}, status=status.HTTP_400_BAD_REQUEST)
 
+            access_class = source_accessor.get("access_class")
+            pre_release_feature = source_accessor.get("pre_release_feature")
+            access_granted = access_class(user_access).access(admin_user, pre_release_feature)
+            return Response({"data": access_granted})
         data = []
         for source_type in self._source_types:
             access_granted = False

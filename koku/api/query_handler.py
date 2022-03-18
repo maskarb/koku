@@ -67,8 +67,7 @@ class QueryHandler:
         # self.start_datetime = parameters["start_date"]
         # self.end_datetime = parameters["end_date"]
         for param, attr in [("start_date", "start_datetime"), ("end_date", "end_datetime")]:
-            p = self.parameters.get(param)
-            if p:
+            if p := self.parameters.get(param):
                 setattr(self, attr, datetime.datetime.combine(parser.parse(p).date(), self.dh.midnight, tzinfo=UTC))
             else:
                 setattr(self, attr, None)
@@ -240,15 +239,12 @@ class QueryHandler:
             if time_scope_value == -10:
                 # get last 10 days
                 start = self.dh.n_days_ago(self.dh.this_hour, 9)
-                end = self.dh.this_hour
             elif time_scope_value == -90:
                 start = self.dh.n_days_ago(self.dh.this_hour, 89)
-                end = self.dh.this_hour
             else:
                 # get last 30 days
                 start = self.dh.n_days_ago(self.dh.this_hour, 29)
-                end = self.dh.this_hour
-
+            end = self.dh.this_hour
         self.start_datetime = start
         self.end_datetime = end
         return (self.start_datetime, self.end_datetime, self.time_interval)
@@ -266,12 +262,11 @@ class QueryHandler:
     def _get_date_delta(self):
         """Return a time delta."""
         if self.time_scope_value in [-1, -2, -3]:
-            date_delta = relativedelta.relativedelta(months=abs(self.time_scope_value))
+            return relativedelta.relativedelta(months=abs(self.time_scope_value))
         elif self.time_scope_value in (-90, -30, -10):
-            date_delta = datetime.timedelta(days=abs(self.time_scope_value))
+            return datetime.timedelta(days=abs(self.time_scope_value))
         else:
-            date_delta = datetime.timedelta(days=10)
-        return date_delta
+            return datetime.timedelta(days=10)
 
     def _get_time_based_filters(self, delta=False):
         if delta:
@@ -339,7 +334,7 @@ class QueryHandler:
             filters.add(query_filter=end_filter)
         return filters
 
-    def filter_to_order_by(self, parameters):  # noqa: C901
+    def filter_to_order_by(self, parameters):    # noqa: C901
         """Remove group_by[NAME]=* and replace it with group_by[NAME]=X.
 
         The parameters object contains a list of filters and a list of group_bys.
@@ -369,8 +364,9 @@ class QueryHandler:
         # find if there is a filter[key]=value that matches this group_by[key]=value
         for key, value in parameters.parameters.get("group_by", {}).items():
             if self.has_wildcard(value):
-                filter_value = parameters.parameters.get("filter", {}).get(key)
-                if filter_value:
+                if filter_value := parameters.parameters.get("filter", {}).get(
+                    key
+                ):
                     parameters.parameters["group_by"][key] = filter_value
         return parameters
 

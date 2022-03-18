@@ -67,5 +67,5 @@ class TagsViewTest(IamTestCase):
                 key = data.get("key")
 
                 url = reverse(key_endpoint, args=[key])
-                response = self.client.get(url + "?key_only=True", **self.headers)
+                response = self.client.get(f'{url}?key_only=True', **self.headers)
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

@@ -53,7 +53,7 @@ class AccountSettingsViewTest(IamTestCase):
 
     def test_account_setting(self):
         """Test grabbing a specified user setting"""
-        url = url = "%scurrency/" % reverse("account-settings")
+        url = url = f'{reverse("account-settings")}currency/'
         client = APIClient()
         expected = {"currency": "USD"}
         with schema_context(self.schema_name):
@@ -65,7 +65,7 @@ class AccountSettingsViewTest(IamTestCase):
 
     def test_account_setting_invalid(self):
         """Test grabbing a specified user setting invalid setting"""
-        url = url = "%sinvalid/" % reverse("account-settings")
+        url = url = f'{reverse("account-settings")}invalid/'
         client = APIClient()
         with schema_context(self.schema_name):
             response = client.get(url, **self.headers)

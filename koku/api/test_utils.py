@@ -267,29 +267,26 @@ class GeneralUtilsTest(IamTestCase):
     def test_get_cost_type(self):
         """Test the get_cost_type function in utils."""
         with schema_context(self.schema_name):
-            query_settings = UserSettings.objects.all().first()
-            if not query_settings:
-                self.assertEqual(get_cost_type(self.request_context["request"]), KOKU_DEFAULT_COST_TYPE)
-            else:
+            if query_settings := UserSettings.objects.all().first():
                 cost_type = query_settings.settings["cost_type"]
                 self.assertEqual(get_cost_type(self.request_context["request"]), cost_type)
+            else:
+                self.assertEqual(get_cost_type(self.request_context["request"]), KOKU_DEFAULT_COST_TYPE)
 
     def test_get_currency(self):
         """Test the get_currency function in utils."""
         with schema_context(self.schema_name):
-            query_settings = UserSettings.objects.all().first()
-            if not query_settings:
-                self.assertEqual(get_currency(self.request_context["request"]), KOKU_DEFAULT_CURRENCY)
-            else:
+            if query_settings := UserSettings.objects.all().first():
                 currency = query_settings.settings["currency"]
                 self.assertEqual(get_currency(self.request_context["request"]), currency)
+            else:
+                self.assertEqual(get_currency(self.request_context["request"]), KOKU_DEFAULT_CURRENCY)
 
     def test_get_user_settings(self):
         """Test the get_user_settings function in utils."""
         with schema_context(self.schema_name):
-            query_settings = UserSettings.objects.all().first()
-            if not query_settings:
-                self.assertEqual(get_account_settings(self.request_context["request"]), USER_SETTINGS)
-            else:
+            if query_settings := UserSettings.objects.all().first():
                 settings = query_settings.settings
                 self.assertEqual(get_account_settings(self.request_context["request"]), settings)
+            else:
+                self.assertEqual(get_account_settings(self.request_context["request"]), USER_SETTINGS)

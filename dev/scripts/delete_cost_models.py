@@ -9,13 +9,14 @@ if __name__ == "__main__":
 
     r = requests.get(url).json()
     cost_model_uuids = []
-    for model in r.get("data", []):
-        cost_model_uuid = model.get("uuid")
-        if cost_model_uuid:
-            cost_model_uuids.append(cost_model_uuid)
+    cost_model_uuids.extend(
+        cost_model_uuid
+        for model in r.get("data", [])
+        if (cost_model_uuid := model.get("uuid"))
+    )
 
     for cost_model_uuid in cost_model_uuids:
-        delete_url = url + f"{cost_model_uuid}/"
+        delete_url = f"{url}{cost_model_uuid}/"
         print(f"Calling {delete_url}")
         r = requests.delete(delete_url)
         print(r)

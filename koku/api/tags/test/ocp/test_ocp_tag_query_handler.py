@@ -370,10 +370,14 @@ class OCPTagQueryHandlerTest(IamTestCase):
         ]
         filters = QueryFilterCollection()
         handler.set_access_filters(access, filt, filters)
-        expected = []
-        expected.append(
-            QueryFilter(field="report_period__cluster_id", operation="icontains", parameter=["my-ocp-cluster-2"])
-        )
+        expected = [
+            QueryFilter(
+                field="report_period__cluster_id",
+                operation="icontains",
+                parameter=["my-ocp-cluster-2"],
+            )
+        ]
+
         expected.append(
             QueryFilter(field="report_period__cluster_alias", operation="icontains", parameter=["my-ocp-cluster-2"])
         )

@@ -194,28 +194,28 @@ class QueryParameters:
         # structure of the tree. Therefore, as long as the user has access to the root nodes
         # passed in by group_by[org_unit_id] then the user automatically has access to all
         # the sub orgs.
-        if ou_group_by_key:
-            if access_list and "*" not in access_list:
-                allowed_ous = (
-                    AWSOrganizationalUnit.objects.filter(
-                        reduce(operator.or_, (Q(org_unit_path__icontains=rbac) for rbac in access_list))
+        if ou_group_by_key and access_list and "*" not in access_list:
+            if allowed_ous := (
+                AWSOrganizationalUnit.objects.filter(
+                    reduce(
+                        operator.or_,
+                        (Q(org_unit_path__icontains=rbac) for rbac in access_list),
                     )
-                    .filter(account_alias__isnull=True)
-                    .order_by("org_unit_id", "-created_timestamp")
-                    .distinct("org_unit_id")
                 )
-                # only change the acces_list if sub_orgs were found
-                if allowed_ous:
-                    access_list = list(allowed_ous.values_list("org_unit_id", flat=True))
-                group_by_list = group_by.get(ou_group_by_key)
-                # if there is a difference between group_by keys & new access list then raise 403
-                if set(group_by.get(ou_group_by_key)).difference(set(access_list)):
-                    LOG.warning(
-                        "User does not have permissions for the requested params: %s. Current access: %s.",
-                        group_by_list,
-                        access_list,
-                    )
-                    raise PermissionDenied()
+                .filter(account_alias__isnull=True)
+                .order_by("org_unit_id", "-created_timestamp")
+                .distinct("org_unit_id")
+            ):
+                access_list = list(allowed_ous.values_list("org_unit_id", flat=True))
+            group_by_list = group_by.get(ou_group_by_key)
+            # if there is a difference between group_by keys & new access list then raise 403
+            if set(group_by.get(ou_group_by_key)).difference(set(access_list)):
+                LOG.warning(
+                    "User does not have permissions for the requested params: %s. Current access: %s.",
+                    group_by_list,
+                    access_list,
+                )
+                raise PermissionDenied()
         return access_list
 
     def _set_access(self, provider, filter_key, access_key, raise_exception=True):
@@ -227,25 +227,28 @@ class QueryParameters:
 
         # check group by
         group_by = self.parameters.get("group_by", {})
-        if access_key == "aws.organizational_unit":
-            if "org_unit_id" in group_by or "or:org_unit_id" in group_by:
-                # Only check the tree hierarchy if we are grouping by org units.
-                # we will want to overwrite the access_list here to include the sub orgs in
-                # the hierarchy for later checks regarding filtering.
-                access_list = self._check_org_unit_tree_hierarchy(group_by, access_list)
+        if access_key == "aws.organizational_unit" and (
+            "org_unit_id" in group_by or "or:org_unit_id" in group_by
+        ):
+            # Only check the tree hierarchy if we are grouping by org units.
+            # we will want to overwrite the access_list here to include the sub orgs in
+            # the hierarchy for later checks regarding filtering.
+            access_list = self._check_org_unit_tree_hierarchy(group_by, access_list)
 
         if group_by.get(filter_key):
             items = set(group_by.get(filter_key))
-            result = get_replacement_result(items, access_list, raise_exception)
-            if result:
+            if result := get_replacement_result(
+                items, access_list, raise_exception
+            ):
                 self.parameters["access"][filter_key] = result
                 access_filter_applied = True
 
         if not access_filter_applied:
             if self.parameters.get("filter", {}).get(filter_key):
                 items = set(self.get_filter(filter_key))
-                result = get_replacement_result(items, access_list, raise_exception)
-                if result:
+                if result := get_replacement_result(
+                    items, access_list, raise_exception
+                ):
                     self.parameters["access"][filter_key] = result
             elif access_list:
                 self.parameters["access"][filter_key] = access_list
@@ -287,21 +290,20 @@ class QueryParameters:
         end_date = self.get_end_date()
         resolution = self.get_filter("resolution")
 
-        if not (start_date or end_date):
+        if not start_date and not end_date:
             if not time_scope_value:
                 time_scope_value = -1 if time_scope_units == "month" else -10
             if not time_scope_units:
-                time_scope_units = "month" if int(time_scope_value) in [-1, -2] else "day"
+                time_scope_units = "month" if int(time_scope_value) in {-1, -2} else "day"
             if not resolution:
-                resolution = "monthly" if int(time_scope_value) in [-1, -2] else "daily"
+                resolution = "monthly" if int(time_scope_value) in {-1, -2} else "daily"
             self.set_filter(
                 time_scope_value=str(time_scope_value),
                 time_scope_units=str(time_scope_units),
                 resolution=str(resolution),
             )
-        else:
-            if not resolution:
-                self.set_filter(resolution="daily")
+        elif not resolution:
+            self.set_filter(resolution="daily")
 
     def _validate(self):
         """Validate query parameters.
@@ -361,13 +363,13 @@ class QueryParameters:
             if isinstance(param_value, dict):
                 new_param_value = copy.deepcopy(param_value)
                 for first, second in param_value.items():
-                    if "supplementary" == first:
+                    if first == "supplementary":
                         new_param_value["sup_total"] = second
                         del new_param_value["supplementary"]
-                    elif "infrastructure" == first:
+                    elif first == "infrastructure":
                         new_param_value["infra_total"] = second
                         del new_param_value["infrastructure"]
-                    elif "cost" == first:
+                    elif first == "cost":
                         new_param_value["cost_total"] = second
                         del new_param_value["cost"]
                 modified_param_dict[param] = new_param_value

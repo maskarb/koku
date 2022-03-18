@@ -121,7 +121,7 @@ class TagQueryHandler(QueryHandler):
         for entry in self.query_data:
             values = entry.get("values", [])
             value_length = len(values)
-            values = values[0:n]
+            values = values[:n]
             if value_length > n:
                 values.append(f"{value_length - n} more...")
             entry["values"] = values
@@ -197,7 +197,7 @@ class TagQueryHandler(QueryHandler):
         filters = QueryFilterCollection()
         composed_filter = Q()
         for filter_key in self.SUPPORTED_FILTERS:
-            operator_key = operator + ":" + filter_key
+            operator_key = f'{operator}:{filter_key}'
             filter_value = self.parameters.get_filter(operator_key)
             logical_operator = operator
             if filter_value and len(filter_value) < 2:
@@ -251,8 +251,7 @@ class TagQueryHandler(QueryHandler):
             for source in self.data_sources:
                 select_cols = ["key"]
                 tag_keys_query = source.get("db_table").objects
-                annotations = source.get("annotations")
-                if annotations:
+                if annotations := source.get("annotations"):
                     tag_keys_query = tag_keys_query.annotate(**annotations)
                     select_cols.extend(annotations)
                 if filters is True:
@@ -289,13 +288,16 @@ class TagQueryHandler(QueryHandler):
         # Sort the data_sources so that those with a "type" go first
         sources = sorted(self.data_sources, key=lambda dikt: dikt.get("type", ""), reverse=True)
 
-        if type_filter and type_filter == "*":
-            for source in sources:
-                source_type = source.get("type")
-                if source_type:
-                    type_filter_array.append(source_type)
-        elif type_filter:
-            type_filter_array.append(type_filter)
+        if type_filter:
+            if type_filter == "*":
+                type_filter_array.extend(
+                    source_type
+                    for source in sources
+                    if (source_type := source.get("type"))
+                )
+
+            else:
+                type_filter_array.append(type_filter)
 
         final_data = []
         with tenant_context(self.tenant):
@@ -305,11 +307,9 @@ class TagQueryHandler(QueryHandler):
                 if type_filter and source.get("type") not in type_filter_array:
                     continue
                 tag_keys_query = source.get("db_table").objects
-                annotations = source.get("annotations")
-                if annotations:
+                if annotations := source.get("annotations"):
                     tag_keys_query = tag_keys_query.annotate(**annotations)
-                    for annotation_key in annotations.keys():
-                        vals.append(annotation_key)
+                    vals.extend(iter(annotations.keys()))
                 exclusion = self._get_exclusions("key")
                 tag_keys = list(tag_keys_query.filter(self.query_filter).exclude(exclusion).values_list(*vals).all())
                 converted = self._convert_to_dict(tag_keys, vals)
@@ -355,9 +355,7 @@ class TagQueryHandler(QueryHandler):
     def _convert_to_dict(tup, vals=["key", "values"]):
         tag_map = {}
         for result in tup:
-            tag = {}
-            for idx in range(len(vals)):
-                tag[vals[idx]] = result[idx]
+            tag = {vals[idx]: result[idx] for idx in range(len(vals))}
             if tag_map.get(tag.get("key")):
                 tag_map[tag.get("key")].get("values").extend(tag.get("values"))
             else:
@@ -365,18 +363,13 @@ class TagQueryHandler(QueryHandler):
         return tag_map
 
     def _value_filter_dict(self, t_keys):
-        values_list = []
-        for obj in t_keys:
-            values_list.append(obj.value)
+        values_list = [obj.value for obj in t_keys]
         return [(self.key, values_list)]
 
     @staticmethod
     def _get_dictionary_for_key(dictionary_list, key):
         """Get dictionary matching key from list of dictionaries."""
-        for di in dictionary_list:
-            if key == di.get("key"):
-                return di
-        return None
+        return next((di for di in dictionary_list if key == di.get("key")), None)
 
     def append_to_final_data_with_type(self, final_data, converted_data, source):
         """Convert data to final list with a source type."""

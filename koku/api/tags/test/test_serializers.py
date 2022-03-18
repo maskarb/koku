@@ -89,8 +89,13 @@ class AWSFilterSerializerTest(TestCase):
         """Test parse of a filter param with type for invalid type."""
         types = ["aws_tags", "pod", "storage"]
         for tag_type in types:
-            filter_params = {"resolution": "daily", "time_scope_value": "-10", "time_scope_units": "day", "type": None}
-            filter_params["type"] = tag_type
+            filter_params = {
+                "resolution": "daily",
+                "time_scope_value": "-10",
+                "time_scope_units": "day",
+                "type": tag_type,
+            }
+
             serializer = AWSFilterSerializer(data=filter_params)
             self.assertFalse(serializer.is_valid())
 
@@ -119,8 +124,13 @@ class OCPFilterSerializerTest(TestCase):
         """Test parse of a filter param with type successfully."""
         types = ["pod", "storage"]
         for tag_type in types:
-            filter_params = {"resolution": "daily", "time_scope_value": "-10", "time_scope_units": "day", "type": None}
-            filter_params["type"] = tag_type
+            filter_params = {
+                "resolution": "daily",
+                "time_scope_value": "-10",
+                "time_scope_units": "day",
+                "type": tag_type,
+            }
+
             serializer = OCPFilterSerializer(data=filter_params)
             self.assertTrue(serializer.is_valid())
 
@@ -128,8 +138,13 @@ class OCPFilterSerializerTest(TestCase):
         """Test parse of a filter param with type for invalid type."""
         types = ["bad1", "aws_tags"]
         for tag_type in types:
-            filter_params = {"resolution": "daily", "time_scope_value": "-10", "time_scope_units": "day", "type": None}
-            filter_params["type"] = tag_type
+            filter_params = {
+                "resolution": "daily",
+                "time_scope_value": "-10",
+                "time_scope_units": "day",
+                "type": tag_type,
+            }
+
             serializer = OCPFilterSerializer(data=filter_params)
             self.assertFalse(serializer.is_valid())
 

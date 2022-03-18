@@ -87,8 +87,13 @@ class AWSFilterSerializerTest(TestCase):
         """Test parse of a filter param with type for invalid type."""
         types = ["aws_tags", "pod", "storage"]
         for tag_type in types:
-            filter_params = {"resolution": "daily", "time_scope_value": "-10", "time_scope_units": "day", "type": None}
-            filter_params["type"] = tag_type
+            filter_params = {
+                "resolution": "daily",
+                "time_scope_value": "-10",
+                "time_scope_units": "day",
+                "type": tag_type,
+            }
+
             serializer = AWSOrgFilterSerializer(data=filter_params)
             self.assertFalse(serializer.is_valid())
 

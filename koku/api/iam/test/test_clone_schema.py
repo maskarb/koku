@@ -155,9 +155,8 @@ class CloneSchemaTest(IamTestCase):
         Test that a DatabaseError is raised from within the call is logged and handled
         """
         tst_schema = "test_clone_schema_exception"
-        expected = 'ERROR:api.iam.models:Exception DatabaseError cloning "{}" to "{}": Too Many Quatloos'.format(
-            Tenant._TEMPLATE_SCHEMA, tst_schema
-        )
+        expected = f'ERROR:api.iam.models:Exception DatabaseError cloning "{Tenant._TEMPLATE_SCHEMA}" to "{tst_schema}": Too Many Quatloos'
+
         with patch("api.iam.models.Tenant._clone_schema", side_effect=DatabaseError("Too Many Quatloos")):
             with self.assertLogs("api.iam.models", level="INFO") as _logger:
                 with self.assertRaises(DatabaseError):

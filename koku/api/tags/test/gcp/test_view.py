@@ -46,7 +46,7 @@ class GCPTagsViewTest(IamTestCase):
                 "filter[time_scope_units]": case.get("unit"),
                 "key_only": True,
             }
-            url = url + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -75,7 +75,7 @@ class GCPTagsViewTest(IamTestCase):
                 "filter[time_scope_units]": case.get("unit"),
                 "key_only": False,
             }
-            url = url + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             data = response.json().get("data")
@@ -111,7 +111,7 @@ class GCPTagsViewTest(IamTestCase):
                 "key_only": False,
                 "filter[account]": case.get("account"),
             }
-            url = url + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             data = response.json().get("data")
@@ -143,7 +143,7 @@ class GCPTagsViewTest(IamTestCase):
             "filter[time_scope_units]": "day",
             "filter[and:account]": account,
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -168,7 +168,7 @@ class GCPTagsViewTest(IamTestCase):
             "filter[time_scope_units]": "day",
             "filter[and:gcp_project]": project_id,
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 

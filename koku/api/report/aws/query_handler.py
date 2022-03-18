@@ -119,7 +119,7 @@ class AWSReportQueryHandler(ReportQueryHandler):
                 annotations[q_param] = F(db_field)
         return annotations
 
-    def format_sub_org_results(self, query_data_results, query_data, sub_orgs_dict):  # noqa: C901
+    def format_sub_org_results(self, query_data_results, query_data, sub_orgs_dict):    # noqa: C901
         """
         Add the sub_orgs into the overall results if grouping by org unit.
 
@@ -132,7 +132,10 @@ class AWSReportQueryHandler(ReportQueryHandler):
             (list) the overall query data results
         """
         # loop through original query data
-        group_by_format_keys = [key + "s" for key in self.parameters.parameters.get("group_by").keys()]
+        group_by_format_keys = [
+            f'{key}s' for key in self.parameters.parameters.get("group_by").keys()
+        ]
+
         for each_day in query_data:
             accounts = each_day.get("accounts", [])
             # rename id/alias and add type
@@ -188,7 +191,7 @@ class AWSReportQueryHandler(ReportQueryHandler):
 
         return query_data
 
-    def execute_query(self):  # noqa: C901
+    def execute_query(self):    # noqa: C901
         """Execute each query needed to return the results.
 
         If grouping by org_unit_id, a query will be executed to
@@ -288,9 +291,7 @@ class AWSReportQueryHandler(ReportQueryHandler):
 
                 # If we're processing for CSV output, then just append the results to a
                 # CSV output list and ensure that id, alias, and type are filled out correctly
-                if not self.is_csv_output:
-                    query_data_results[sub_org_name] = sub_query_data
-                else:
+                if self.is_csv_output:
                     # Add the initial account query results, if not set
                     if len(csv_results) == 0:
                         csv_results = [dict(type="account", **d) for d in query_data]
@@ -302,18 +303,12 @@ class AWSReportQueryHandler(ReportQueryHandler):
                         dict(type="organizational_unit", account_alias=sub_org_name, account=sub_org_id, **d)
                         for d in sub_query_data
                     )
-        else:
-            # If we're processing for CSV output, but were not processing
-            # org unit, then just make the CSV result list the initial query data results
-            if self.is_csv_output:
-                csv_results = query_data
+                else:
+                    query_data_results[sub_org_name] = sub_query_data
+        elif self.is_csv_output:
+            csv_results = query_data
 
-        if not self.is_csv_output:
-            # If not CSV output and org unit was applied, then reshape the output
-            # structures for the JSON serializer
-            if org_unit_applied:
-                query_data = self.format_sub_org_results(query_data_results, query_data, sub_orgs_dict)
-        else:
+        if self.is_csv_output:
             # For CSV output, if there was a limit, then sent *all* output (base + sub-org, if any)
             # to the ranked list method
             if self._limit:
@@ -324,6 +319,8 @@ class AWSReportQueryHandler(ReportQueryHandler):
 
             query_data = self._set_csv_output_fields(query_data)
 
+        elif org_unit_applied:
+            query_data = self.format_sub_org_results(query_data_results, query_data, sub_orgs_dict)
         # Add each of the sub_org sums to the query_sum
         self.query_data = query_data
         self.query_sum = query_sum
@@ -535,15 +532,17 @@ select coalesce(raa.account_alias, t.usage_account_id)::text as "account",
         # the sub orgs.
         with tenant_context(self.tenant):
             if access and "*" not in access:
-                allowed_ous = (
+                if allowed_ous := (
                     AWSOrganizationalUnit.objects.filter(
-                        reduce(operator.or_, (Q(org_unit_path__icontains=rbac) for rbac in access))
+                        reduce(
+                            operator.or_,
+                            (Q(org_unit_path__icontains=rbac) for rbac in access),
+                        )
                     )
                     .filter(account_alias__isnull=True)
                     .order_by("org_unit_id", "-created_timestamp")
                     .distinct("org_unit_id")
-                )
-                if allowed_ous:
+                ):
                     access = list(allowed_ous.values_list("org_unit_id", flat=True))
             if not isinstance(filt, list) and filt["field"] == "organizational_unit__org_unit_path":
                 filt["field"] = "organizational_unit__org_unit_id"
@@ -609,9 +608,7 @@ select coalesce(raa.account_alias, t.usage_account_id)::text as "account",
 
                 try:
                     ciso8601.parse_datetime(date_str)
-                except ValueError:
-                    return False
-                except TypeError:
+                except (ValueError, TypeError):
                     return False
                 return True
 

@@ -197,7 +197,7 @@ class GCPReportQueryHandlerTest(IamTestCase):
         for filt in handler._mapper.report_type_map.get("filter"):
             if filt:
                 qf = QueryFilter(**filt)
-                filters.update({qf.composed_query_string(): qf.parameter})
+                filters[qf.composed_query_string()] = qf.parameter
         current_totals = self.get_totals_costs_by_time_scope(aggregates, filters)
         self.assertIsNotNone(total.get("cost"))
         self.assertEqual(total.get("cost", {}).get("total").get("value"), current_totals["cost_total"])
@@ -253,7 +253,7 @@ class GCPReportQueryHandlerTest(IamTestCase):
         for filt in handler._mapper.report_type_map.get("filter"):
             if filt:
                 qf = QueryFilter(**filt)
-                filters.update({qf.composed_query_string(): qf.parameter})
+                filters[qf.composed_query_string()] = qf.parameter
         current_totals = self.get_totals_costs_by_time_scope(aggregates, filters)
         self.assertIsNotNone(total.get("cost"))
         self.assertEqual(total.get("cost", {}).get("total").get("value"), current_totals["cost_total"])
@@ -521,7 +521,7 @@ class GCPReportQueryHandlerTest(IamTestCase):
         for filt in handler._mapper.report_type_map.get("filter"):
             if filt:
                 qf = QueryFilter(**filt)
-                filters.update({qf.composed_query_string(): qf.parameter})
+                filters[qf.composed_query_string()] = qf.parameter
         current_totals = self.get_totals_costs_by_time_scope(aggregates, filters)
         self.assertIsNotNone(total.get("cost"))
         self.assertEqual(total.get("cost", {}).get("total").get("value"), current_totals["cost_total"])
@@ -908,7 +908,7 @@ class GCPReportQueryHandlerTest(IamTestCase):
                 handler = GCPReportQueryHandler(query_params)
                 self.assertEqual(handler.query_table, table)
 
-    def test_source_uuid_mapping(self):  # noqa: C901
+    def test_source_uuid_mapping(self):    # noqa: C901
         """Test source_uuid is mapped to the correct source."""
         # Find the correct expected source uuid:
         with tenant_context(self.tenant):
@@ -932,10 +932,12 @@ class GCPReportQueryHandlerTest(IamTestCase):
                     for _, value in dictionary.items():
                         if isinstance(value, list):
                             for item in value:
-                                if isinstance(item, dict):
-                                    if "values" in item.keys():
-                                        value = item["values"][0]
-                                        source_uuid_list.extend(value.get("source_uuid"))
+                                if (
+                                    isinstance(item, dict)
+                                    and "values" in item.keys()
+                                ):
+                                    value = item["values"][0]
+                                    source_uuid_list.extend(value.get("source_uuid"))
         self.assertNotEquals(source_uuid_list, [])
         for source_uuid in source_uuid_list:
             self.assertIn(source_uuid, expected_source_uuids)

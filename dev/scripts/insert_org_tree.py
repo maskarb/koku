@@ -72,10 +72,10 @@ class UploadAwsTree:
         source_url = f"http://{koku_host}:{koku_port}/api/cost-management/v1/sources/?type=AWS-local"
         source_info = requests.get(source_url)
         source_data = source_info.json()
-        for source in source_data.get("data"):
-            if source.get("name") == self.source_name:
-                return True
-        return False
+        return any(
+            source.get("name") == self.source_name
+            for source in source_data.get("data")
+        )
 
     def create_aws_source(self, koku_host, koku_port):
         """Creates the aws source."""
@@ -93,7 +93,7 @@ class UploadAwsTree:
 
     def run_nise_command(self, nise_yaml, koku_host, koku_port):
         """Updates configures nise, creates aws source and runs download."""
-        testing_path = os.getcwd() + "/testing/local_providers/aws_local_1"
+        testing_path = f'{os.getcwd()}/testing/local_providers/aws_local_1'
         nise_command = (
             f"nise report aws --static-report-file {nise_yaml} "
             f"--aws-s3-bucket-name {testing_path} --aws-s3-report-name local-bucket"
@@ -117,7 +117,7 @@ if "__main__" in __name__:
     tree_yaml = "dev/scripts/aws_org_tree.yml"
     nise_yaml = "dev/scripts/nise_ymls/org_tree_aws_static_data.yml"
     schema = "acct10001"
-    start_date = str(datetime.today().date())
+    start_date = str(datetime.now().date())
     masu_host = require_env("MASU_API_HOSTNAME")
     masu_port = require_env("MASU_PORT")
     for arg in sys_args:

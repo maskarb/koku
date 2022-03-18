@@ -62,7 +62,7 @@ class OCPReportQueryHandler(ReportQueryHandler):
 
         # Update which field is used to calculate cost by group by param.
         if is_grouped_by_project(parameters) and parameters.report_type == "costs":
-            self._report_type = parameters.report_type + "_by_project"
+            self._report_type = f'{parameters.report_type}_by_project'
             self._mapper = OCPProviderMap(provider=self.provider, report_type=self._report_type)
 
         # super() needs to be called after _mapper and _limit is set
@@ -158,9 +158,7 @@ class OCPReportQueryHandler(ReportQueryHandler):
 
                 try:
                     ciso8601.parse_datetime(date_str)
-                except ValueError:
-                    return False
-                except TypeError:
+                except (ValueError, TypeError):
                     return False
                 return True
 
@@ -217,7 +215,7 @@ class OCPReportQueryHandler(ReportQueryHandler):
         self.query_data = data
         return self._format_query_response()
 
-    def get_cluster_capacity(self, query_data):  # noqa: C901
+    def get_cluster_capacity(self, query_data):    # noqa: C901
         """Calculate cluster capacity for all nodes over the date range."""
         annotations = self._mapper.report_type_map.get("capacity_aggregate")
         if not annotations:
@@ -264,8 +262,7 @@ class OCPReportQueryHandler(ReportQueryHandler):
         elif self.resolution == "monthly":
             if not self.parameters.get("start_date"):
                 for row in query_data:
-                    cluster_id = row.get("cluster")
-                    if cluster_id:
+                    if cluster_id := row.get("cluster"):
                         row[cap_key] = capacity_by_cluster.get(cluster_id, Decimal(0))
                     else:
                         row[cap_key] = total_capacity

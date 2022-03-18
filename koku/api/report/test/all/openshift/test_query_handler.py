@@ -81,7 +81,7 @@ class OCPAllQueryHandlerTest(IamTestCase):
         handler = OCPAllReportQueryHandler(query_params)
         self.assertTrue(handler.query_table == DATABASE_SUMMARY)
 
-    def disable_test_source_uuid_mapping(self):  # noqa: C901
+    def disable_test_source_uuid_mapping(self):    # noqa: C901
         """Test source_uuid is mapped to the correct source."""
         endpoints = [OCPAllCostView, OCPAllInstanceTypeView, OCPAllStorageView]
         with tenant_context(self.tenant):
@@ -108,11 +108,13 @@ class OCPAllQueryHandlerTest(IamTestCase):
                     for _, value in dictionary.items():
                         if isinstance(value, list):
                             for item in value:
-                                if isinstance(item, dict):
-                                    if "values" in item.keys():
-                                        self.assertEqual(len(item["values"]), 1)
-                                        value = item["values"][0]
-                                        source_uuid_list.extend(value.get("source_uuid"))
+                                if (
+                                    isinstance(item, dict)
+                                    and "values" in item.keys()
+                                ):
+                                    self.assertEqual(len(item["values"]), 1)
+                                    value = item["values"][0]
+                                    source_uuid_list.extend(value.get("source_uuid"))
         self.assertNotEquals(source_uuid_list, [])
         for source_uuid in source_uuid_list:
             self.assertIn(source_uuid, expected_source_uuids)

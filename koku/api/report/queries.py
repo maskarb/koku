@@ -120,20 +120,24 @@ class ReportQueryHandler(QueryHandler):
         ):
             return query_table
 
-        key_tuple = tuple(
-            sorted(self.query_table_filter_keys.union(self.query_table_group_by_keys, self.query_table_access_keys))
-        )
-        if key_tuple:
+        if key_tuple := tuple(
+            sorted(
+                self.query_table_filter_keys.union(
+                    self.query_table_group_by_keys, self.query_table_access_keys
+                )
+            )
+        ):
             report_group = key_tuple
 
         # Special Casess for Network and Database Cards in the UI
         service_filter = set(self.parameters.get("filter", {}).get("service", []))
         if self.provider in (Provider.PROVIDER_AZURE, Provider.OCP_AZURE):
             service_filter = set(self.parameters.get("filter", {}).get("service_name", []))
-        if report_type == "costs" and service_filter and not service_filter.difference(self.network_services):
-            report_type = "network"
-        elif report_type == "costs" and service_filter and not service_filter.difference(self.database_services):
-            report_type = "database"
+        if report_type == "costs" and service_filter:
+            if not service_filter.difference(self.network_services):
+                report_type = "network"
+            elif not service_filter.difference(self.database_services):
+                report_type = "database"
 
         try:
             query_table = self._mapper.views[report_type][report_group]
@@ -144,28 +148,20 @@ class ReportQueryHandler(QueryHandler):
 
     def initialize_totals(self):
         """Initialize the total response column values."""
-        query_sum = {}
-        for value in self._mapper.report_type_map.get("aggregates").keys():
-            query_sum[value] = 0
-        return query_sum
+        return {
+            value: 0
+            for value in self._mapper.report_type_map.get("aggregates").keys()
+        }
 
     def get_tag_filter_keys(self):
         """Get tag keys from filter arguments."""
-        tag_filters = []
         filters = self.parameters.get("filter", {})
-        for filt in filters:
-            if filt in self._tag_keys:
-                tag_filters.append(filt)
-        return tag_filters
+        return [filt for filt in filters if filt in self._tag_keys]
 
     def get_tag_group_by_keys(self):
         """Get tag keys from group by arguments."""
-        tag_groups = []
         filters = self.parameters.get("group_by", {})
-        for filt in filters:
-            if filt in self._tag_keys:
-                tag_groups.append(filt)
-        return tag_groups
+        return [filt for filt in filters if filt in self._tag_keys]
 
     def _build_custom_filter_list(self, filter_type, method, filter_list):
         """Replace filter list items from custom method."""
@@ -254,7 +250,7 @@ class ReportQueryHandler(QueryHandler):
         tag_filters = [tag for tag in tag_filters if "and:" not in tag and "or:" not in tag]
         for tag in tag_filters:
             # Update the filter to use the label column name
-            tag_db_name = tag_column + "__" + strip_tag_prefix(tag)
+            tag_db_name = f'{tag_column}__{strip_tag_prefix(tag)}'
             filt = {"field": tag_db_name, "operation": "icontains"}
             group_by = self.parameters.get_group_by(tag, list())
             filter_ = self.parameters.get_filter(tag, list())
@@ -271,10 +267,10 @@ class ReportQueryHandler(QueryHandler):
         tag_filters = self.get_tag_filter_keys()
         tag_group_by = self.get_tag_group_by_keys()
         tag_filters.extend(tag_group_by)
-        tag_filters = [tag for tag in tag_filters if operator + ":" in tag]
+        tag_filters = [tag for tag in tag_filters if f'{operator}:' in tag]
         for tag in tag_filters:
             # Update the filter to use the label column name
-            tag_db_name = tag_column + "__" + strip_tag_prefix(tag)
+            tag_db_name = f'{tag_column}__{strip_tag_prefix(tag)}'
             filt = {"field": tag_db_name, "operation": "icontains"}
             group_by = self.parameters.get_group_by(tag, list())
             filter_ = self.parameters.get_filter(tag, list())
@@ -292,7 +288,7 @@ class ReportQueryHandler(QueryHandler):
         composed_filter = Q()
 
         for q_param, filt in fields.items():
-            q_param = operator + ":" + q_param
+            q_param = f'{operator}:{q_param}'
             group_by = self.parameters.get_group_by(q_param, list())
             filter_ = self.parameters.get_filter(q_param, list())
             list_ = list(set(group_by + filter_))  # uniquify the list
@@ -363,9 +359,9 @@ class ReportQueryHandler(QueryHandler):
         for item in self.group_by_options:
             group_data = self.parameters.get_group_by(item)
             if not group_data:
-                group_data = self.parameters.get_group_by("and:" + item)
+                group_data = self.parameters.get_group_by(f"and:{item}")
             if not group_data:
-                group_data = self.parameters.get_group_by("or:" + item)
+                group_data = self.parameters.get_group_by(f"or:{item}")
             if group_data:
                 try:
                     group_pos = self.parameters.url_data.index(item)
@@ -389,7 +385,7 @@ class ReportQueryHandler(QueryHandler):
         # For that ranking to work we can't also group by instance_type.
         inherent_group_by = self._mapper._report_type_map.get("group_by")
         if inherent_group_by and not (group_by and self._limit):
-            group_by = group_by + list(set(inherent_group_by) - set(group_by))
+            group_by += list(set(inherent_group_by) - set(group_by))
 
         return group_by
 
@@ -399,7 +395,7 @@ class ReportQueryHandler(QueryHandler):
         tag_column = self._mapper.tag_column
         tag_groups = self.get_tag_group_by_keys()
         for tag in tag_groups:
-            tag_db_name = tag_column + "__" + strip_tag_prefix(tag)
+            tag_db_name = f'{tag_column}__{strip_tag_prefix(tag)}'
             group_data = self.parameters.get_group_by(tag)
             if group_data:
                 tag = quote_plus(tag)
@@ -467,7 +463,7 @@ class ReportQueryHandler(QueryHandler):
             (Dict): Data updated with no-group labels
 
         """
-        tag_prefix = self._mapper.tag_column + "__"
+        tag_prefix = f'{self._mapper.tag_column}__'
         if groupby is None:
             return data
 
@@ -522,9 +518,9 @@ class ReportQueryHandler(QueryHandler):
 
         return output
 
-    def _pack_data_object(self, data, **kwargs):  # noqa: C901
+    def _pack_data_object(self, data, **kwargs):    # noqa: C901
         """Pack data into object format."""
-        tag_prefix = self._mapper.tag_column + "__"
+        tag_prefix = f'{self._mapper.tag_column}__'
         if not isinstance(data, dict):
             return data
 
@@ -541,15 +537,15 @@ class ReportQueryHandler(QueryHandler):
                     if value is not None and units is not None:
                         group_key = group_info.get("group")
                         new_key = group_info.get("key")
-                        if data.get(group_key):
-                            if isinstance(data[group_key], str):
-                                # This if is to overwrite the "cost": "no-cost"
-                                # that is provided by the order_by function.
-                                data[group_key] = {}
-                            data[group_key][new_key] = {"value": value, "units": units}
-                        else:
+                        if (
+                            data.get(group_key)
+                            and isinstance(data[group_key], str)
+                            or not data.get(group_key)
+                        ):
+                            # This if is to overwrite the "cost": "no-cost"
+                            # that is provided by the order_by function.
                             data[group_key] = {}
-                            data[group_key][new_key] = {"value": value, "units": units}
+                        data[group_key][new_key] = {"value": value, "units": units}
                         remove_keys.append(data_key)
             else:
                 if key_items:
@@ -569,7 +565,7 @@ class ReportQueryHandler(QueryHandler):
             if data_key.startswith(tag_prefix):
                 new_tag = data_key[len(tag_prefix) :]  # noqa
                 if new_tag in all_pack_keys:
-                    new_data["tag:" + new_tag] = data[data_key]
+                    new_data[f"tag:{new_tag}"] = data[data_key]
                 else:
                     new_data[new_tag] = data[data_key]
                 delete_keys.append(data_key)
@@ -581,7 +577,7 @@ class ReportQueryHandler(QueryHandler):
 
     def _transform_data(self, groups, group_index, data):
         """Transform dictionary data points to lists."""
-        tag_prefix = self._mapper.tag_column + "__"
+        tag_prefix = f'{self._mapper.tag_column}__'
         groups_len = len(groups)
         if not groups or group_index >= groups_len:
             pack = self._mapper.PACK_DEFINITIONS
@@ -595,7 +591,7 @@ class ReportQueryHandler(QueryHandler):
         next_group_index = group_index + 1
 
         if next_group_index < groups_len:
-            label = groups[next_group_index] + "s"
+            label = f'{groups[next_group_index]}s'
             if label.startswith(tag_prefix):
                 label = label[len(tag_prefix) :]  # noqa
 
@@ -604,7 +600,7 @@ class ReportQueryHandler(QueryHandler):
             if group_type.startswith(tag_prefix):
                 group_title = group_type[len(tag_prefix) :]  # noqa
             group_label = group
-            if group is None:
+            if group_label is None:
                 group_label = f"no-{group_title}"
             cur = {group_title: group_label, label: self._transform_data(groups, next_group_index, group_value)}
             out_data.append(cur)
@@ -636,7 +632,7 @@ class ReportQueryHandler(QueryHandler):
             "cost_total",
         ]
         tag_str = "tag:"
-        db_tag_prefix = self._mapper.tag_column + "__"
+        db_tag_prefix = f'{self._mapper.tag_column}__'
         sorted_data = data
         for field in reversed(order_fields):
             reverse = False
@@ -678,7 +674,7 @@ class ReportQueryHandler(QueryHandler):
             OrderBy: A Django OrderBy clause using raw SQL
 
         """
-        descending = True if self.order_direction == "desc" else False
+        descending = self.order_direction == "desc"
         tag_column, tag_value = tag.split("__")
         return OrderBy(RawSQL(f"{tag_column} -> %s", (tag_value,)), descending=descending)
 
@@ -712,18 +708,17 @@ class ReportQueryHandler(QueryHandler):
         if rank_value:
             return rank_value
         group_by_value = self._get_group_by()
-        check_tag_group_by = is_grouped_by_tag(self.parameters)
-        if check_tag_group_by:
+        if check_tag_group_by := is_grouped_by_tag(self.parameters):
             tag_value = check_tag_group_by[0].split(":")[1]
             rank_value = f"no-{tag_value}"
         else:
             rank_value = f"no-{group_by_value[0]}"
         return rank_value
 
-    def _group_by_ranks(self, query, data):  # noqa: C901
+    def _group_by_ranks(self, query, data):    # noqa: C901
         """Handle grouping data by filter limit."""
         group_by_value = self._get_group_by()
-        gb = group_by_value if group_by_value else ["date"]
+        gb = group_by_value or ["date"]
         tag_column = self._mapper.tag_column
         rank_orders = []
 
@@ -833,10 +828,9 @@ class ReportQueryHandler(QueryHandler):
             if rank_field == "account":
                 ranked_empty_row["account_alias"] = account_alias_map.get(missed, missed)
             missed_data.append(ranked_empty_row)
-        new_data = data + missed_data
-        return new_data
+        return data + missed_data
 
-    def _perform_rank_summation(self, entry, is_offset=False, ranks=[]):  # noqa: C901
+    def _perform_rank_summation(self, entry, is_offset=False, ranks=[]):    # noqa: C901
         """Do the rank limiting for _ranked_list().
 
         Args:
@@ -866,15 +860,11 @@ class ReportQueryHandler(QueryHandler):
             else:
                 others_list.append(data)
                 for column in self._mapper.sum_columns:
-                    other_sums[column] += data.get(column) if data.get(column) else 0
+                    other_sums[column] += data.get(column) or 0
 
         if other is not None and others_list and not is_offset:
             num_others = len(others_list)
-            others_label = "Others"
-
-            if num_others == 1:
-                others_label = "Other"
-
+            others_label = "Other" if num_others == 1 else "Others"
             other.update(other_sums)
             other["rank"] = self._limit + 1
             group_by = self._get_group_by()
@@ -914,8 +904,7 @@ class ReportQueryHandler(QueryHandler):
         account_alias_map = {}
         for data in data_list:
             key = data.get("date")
-            alias = data.get("account_alias")
-            if alias:
+            if alias := data.get("account_alias"):
                 account_alias_map[data.get("account")] = alias
             date_grouped_data[key].append(data)
         return date_grouped_data, account_alias_map
@@ -924,8 +913,7 @@ class ReportQueryHandler(QueryHandler):
         """Return date grouped data to a flatter form."""
         return_data = []
         for date, values in date_grouped_data.items():
-            for value in values:
-                return_data.append(value)
+            return_data.extend(iter(values))
         return return_data
 
     def _create_previous_totals(self, previous_query, query_group_by):
@@ -1006,21 +994,21 @@ class ReportQueryHandler(QueryHandler):
             row["delta_percent"] = self._percent_delta(current_total, previous_total)
         # Calculate the delta on the total aggregate
         if self._delta in query_sum:
-            if isinstance(query_sum.get(self._delta), dict):
-                current_total_sum = Decimal(query_sum.get(self._delta, {}).get("value") or 0)
-            else:
-                current_total_sum = Decimal(query_sum.get(self._delta) or 0)
+            current_total_sum = (
+                Decimal(query_sum.get(self._delta, {}).get("value") or 0)
+                if isinstance(query_sum.get(self._delta), dict)
+                else Decimal(query_sum.get(self._delta) or 0)
+            )
+
+        elif isinstance(query_sum.get("cost"), dict):
+            current_total_sum = Decimal(query_sum.get("cost", {}).get("total").get("value") or 0)
         else:
-            if isinstance(query_sum.get("cost"), dict):
-                current_total_sum = Decimal(query_sum.get("cost", {}).get("total").get("value") or 0)
-            else:
-                current_total_sum = Decimal(query_sum.get("cost") or 0)
+            current_total_sum = Decimal(query_sum.get("cost") or 0)
         delta_field = self._mapper._report_type_map.get("delta_key").get(self._delta)
         prev_total_sum = previous_query.aggregate(value=delta_field)
         if self.resolution == "daily":
             dates = [entry.get("date") for entry in query_data]
-            prev_total_filters = self._get_previous_totals_filter(dates)
-            if prev_total_filters:
+            if prev_total_filters := self._get_previous_totals_filter(dates):
                 prev_total_sum = previous_query.filter(prev_total_filters).aggregate(value=delta_field)
 
         prev_total_sum = Decimal(prev_total_sum.get("value") or 0)
@@ -1031,7 +1019,7 @@ class ReportQueryHandler(QueryHandler):
         self.query_delta = {"value": total_delta, "percent": total_delta_percent}
 
         if self.order_field == "delta":
-            reverse = True if self.order_direction == "desc" else False
+            reverse = self.order_direction == "desc"
             query_data = sorted(
                 list(query_data), key=lambda x: (x.get("delta_value", 0), x.get("delta_percent", 0)), reverse=reverse
             )

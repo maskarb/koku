@@ -301,7 +301,7 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-cpu")
         client = APIClient()
         params = {"filter[time_scope_value]": "-30", "filter[time_scope_units]": "day", "filter[resolution]": "daily"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
 
         expected_end_date = self.dh.today
@@ -330,7 +330,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[time_scope_value]": "-1",
             "filter[time_scope_units]": "month",
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
 
         expected_date = self.dh.today.strftime("%Y-%m")
@@ -350,7 +350,7 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-cpu")
         client = APIClient()
         params = {"filter[resolution]": "daily", "filter[time_scope_value]": "-1", "filter[time_scope_units]": "month"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
 
         expected_start_date = self.dh.this_month_start.strftime("%Y-%m-%d")
@@ -378,7 +378,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[time_scope_value]": "-2",
             "filter[time_scope_units]": "month",
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
 
         expected_date = self.dh.last_month_start.strftime("%Y-%m")
@@ -398,7 +398,7 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-cpu")
         client = APIClient()
         params = {"filter[resolution]": "daily", "filter[time_scope_value]": "-2", "filter[time_scope_units]": "month"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
 
         expected_start_date = self.dh.last_month_start.strftime("%Y-%m-%d")
@@ -428,7 +428,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[time_scope_units]": "day",
             "filter[resolution]": "daily",
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         data = response.data
 
@@ -476,7 +476,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[time_scope_units]": "day",
             "filter[resolution]": "daily",
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         data = response.data
 
@@ -489,7 +489,7 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-costs")
         client = APIClient()
         params = {"group_by[cluster]": "*"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -498,7 +498,7 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-costs")
         client = APIClient()
         params = {"group_by[node]": "*"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -512,7 +512,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[time_scope_units]": "month",
             "filter[resolution]": "monthly",
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -819,12 +819,12 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-costs")
         client = APIClient()
         params = {"delta": "usage"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         params = {"delta": "request"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -833,7 +833,7 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-cpu")
         client = APIClient()
         params = {"delta": "cost"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -842,7 +842,7 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-cpu")
         client = APIClient()
         params = {"delta": "usage"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -851,7 +851,7 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-cpu")
         client = APIClient()
         params = {"delta": "request"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -860,7 +860,7 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-memory")
         client = APIClient()
         params = {"delta": "request"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -870,7 +870,7 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-cpu")
         client = APIClient()
         params = {"delta": delta}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -893,7 +893,7 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-cpu")
         client = APIClient()
         params = {"delta": delta}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -916,7 +916,7 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-cpu")
         client = APIClient()
         params = {"delta": delta}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -949,7 +949,7 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
         params = {"group_by[project]": project_of_interest}
 
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -967,7 +967,7 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
         params = {"group_by[project]": project_of_interest}
 
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -987,15 +987,14 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
         params = {"filter[project]": project_of_interest}
 
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = response.json()
         self.assertNotEqual(data.get("data", []), [])
         for entry in data.get("data", []):
-            values = entry.get("values", [])
-            if values:
+            if values := entry.get("values", []):
                 self.assertEqual(len(values), 1)
 
     def test_execute_query_group_by_cluster(self):
@@ -1014,7 +1013,7 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
         params = {"group_by[cluster]": cluster_of_interest}
 
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1029,7 +1028,7 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
         params = {"group_by[pod]": "*"}
 
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -1050,7 +1049,7 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
         params = {"group_by[node]": node_of_interest}
 
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1068,7 +1067,7 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
         params = {"group_by[node]": node_of_interest}
 
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1091,15 +1090,14 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
         params = {"filter[node]": node_of_interest}
 
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = response.json()
         self.assertNotEqual(data.get("data"), [])
         for entry in data.get("data", []):
-            values = entry.get("values", [])
-            if values:
+            if values := entry.get("values", []):
                 self.assertEqual(len(values), 1)
 
     def test_execute_query_with_tag_filter(self):
@@ -1149,7 +1147,7 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
         params = {f"filter[tag:{filter_key}]": filter_value, "filter[time_scope_value]": -10}
 
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1220,7 +1218,7 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
         params = {f"filter[tag:{filter_key}]": filter_value, "filter[time_scope_value]": -10}
 
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1272,7 +1270,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[resolution]": "daily",
         }
 
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1298,13 +1296,13 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
         params = {f"group_by[tag:{group_by_key}]": "*"}
 
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = response.json()
         data = data.get("data", [])
-        expected_keys = ["date", group_by_key + "s"]
+        expected_keys = ["date", f'{group_by_key}s']
         for entry in data:
             self.assertEqual(list(entry.keys()), expected_keys)
 
@@ -1320,13 +1318,13 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
         params = {f"group_by[tag:{group_by_key}]": "*"}
 
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = response.json()
         data = data.get("data", [])
-        expected_keys = ["date", group_by_key + "s"]
+        expected_keys = ["date", f'{group_by_key}s']
         for entry in data:
             self.assertEqual(list(entry.keys()), expected_keys)
 
@@ -1338,7 +1336,7 @@ class OCPReportViewTest(IamTestCase):
         response = client.get(tag_url, **self.headers)
         tag_keys = response.data.get("data", [])
         tag_key = tag_keys[0]
-        tag_key_plural = tag_key + "s"
+        tag_key_plural = f'{tag_key}s'
 
         url = reverse("reports-openshift-cpu")
         params = {
@@ -1348,7 +1346,7 @@ class OCPReportViewTest(IamTestCase):
             f"group_by[tag:{tag_key}]": "*",
             "filter[limit]": 2,
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1366,7 +1364,7 @@ class OCPReportViewTest(IamTestCase):
         url = reverse("reports-openshift-cpu")
         client = APIClient()
         params = {"group_by[node]": "*", "filter[limit]": 1}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1374,8 +1372,7 @@ class OCPReportViewTest(IamTestCase):
         data = data.get("data", [])
         self.assertNotEqual(data, [])
         for entry in data:
-            other = entry.get("nodes", [])[-1:]
-            if other:
+            if other := entry.get("nodes", [])[-1:]:
                 self.assertIn("Other", other[0].get("node"))
 
     def test_execute_query_with_group_by_order_by_and_limit(self):
@@ -1397,7 +1394,7 @@ class OCPReportViewTest(IamTestCase):
                 "filter[limit]": 5,
             }
 
-            url = url + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1435,7 +1432,7 @@ class OCPReportViewTest(IamTestCase):
                 order_by_dict_key: "desc",
             }
 
-            url = url + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1452,7 +1449,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[limit]": 1,
             "delta": "usage__capacity",
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1505,7 +1502,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[time_scope_value]": "-1",
             "filter[time_scope_units]": "month",
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1525,7 +1522,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[time_scope_value]": "-1",
             "filter[time_scope_units]": "month",
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1552,7 +1549,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[time_scope_units]": "day",
             "limit": limit,
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1585,7 +1582,7 @@ class OCPReportViewTest(IamTestCase):
             "limit": limit,
             "offset": offset,
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1618,7 +1615,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[limit]": limit,
             "filter[offset]": offset,
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1653,7 +1650,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[limit]": limit,
             "filter[offset]": offset,
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1692,7 +1689,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[time_scope_units]": "day",
             "filter[and:project]": projects,
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1719,7 +1716,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[time_scope_units]": "day",
             "group_by[and:cluster]": clusters,
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1757,7 +1754,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[time_scope_units]": "month",
             f"filter[and:tag:{filter_key}]": filter_value,
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1789,7 +1786,7 @@ class OCPReportViewTest(IamTestCase):
             "filter[time_scope_units]": "month",
             f"group_by[and:tag:{group_by_key}]": group_by_value,
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -1799,7 +1796,7 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
 
         tag_url = reverse("openshift-tags")
-        tag_url = tag_url + "?filter[time_scope_value]=-1&key_only=True"
+        tag_url = f'{tag_url}?filter[time_scope_value]=-1&key_only=True'
         response = client.get(tag_url, **self.headers)
         tag_keys = response.data.get("data", [])
 
@@ -1812,7 +1809,7 @@ class OCPReportViewTest(IamTestCase):
                 order_by_dict_key: random.choice(["asc", "desc"]),
             }
 
-            url = baseurl + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{baseurl}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -1822,7 +1819,7 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
 
         tag_url = reverse("openshift-tags")
-        tag_url = tag_url + "?filter[time_scope_value]=-1&key_only=True"
+        tag_url = f'{tag_url}?filter[time_scope_value]=-1&key_only=True'
         response = client.get(tag_url, **self.headers)
         tag_keys = response.data.get("data", [])
 
@@ -1836,7 +1833,7 @@ class OCPReportViewTest(IamTestCase):
                 "group_by[usage]": random.choice(["asc", "desc"]),
             }
 
-            url = baseurl + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{baseurl}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -1846,7 +1843,7 @@ class OCPReportViewTest(IamTestCase):
         client = APIClient()
 
         tag_url = reverse("openshift-tags")
-        tag_url = tag_url + "?filter[time_scope_value]=-1&key_only=True"
+        tag_url = f'{tag_url}?filter[time_scope_value]=-1&key_only=True'
         response = client.get(tag_url, **self.headers)
         tag_keys = response.data.get("data", [])
 
@@ -1861,6 +1858,6 @@ class OCPReportViewTest(IamTestCase):
                 group_by_dict_key: "*",
             }
 
-            url = baseurl + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{baseurl}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
             self.assertEqual(response.status_code, status.HTTP_200_OK)

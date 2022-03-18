@@ -51,11 +51,11 @@ class Status:
 
         :returns: A dictonary of module names and versions.
         """
-        module_data = {}
-        for name, module in sorted(sys.modules.items()):
-            if hasattr(module, "__version__"):
-                module_data[str(name)] = str(module.__version__)
-        return module_data
+        return {
+            str(name): str(module.__version__)
+            for name, module in sorted(sys.modules.items())
+            if hasattr(module, "__version__")
+        }
 
     @property
     def api_version(self):
@@ -69,11 +69,9 @@ class Status:
             LOG.info("%s - %s ", name, value)
 
         LOG.info("Python: %s", self.python_version)
-        module_list = []
-        for mod, version in self.modules.items():
-            module_list.append(f"{mod} - {version}")
-
-        if module_list:
+        if module_list := [
+            f"{mod} - {version}" for mod, version in self.modules.items()
+        ]:
             LOG.info("Modules: %s", ", ".join(module_list))
         else:
             LOG.info("Modules: None")

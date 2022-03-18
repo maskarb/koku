@@ -102,12 +102,12 @@ class AzureFilterSerializerTest(TestCase):
     def test_all_filter_op_fields(self):
         """Test that the allowed fields pass."""
         for field in AzureFilterSerializer._opfields:
-            field = "and:" + field
+            field = f"and:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = AzureFilterSerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())
         for field in AzureFilterSerializer._opfields:
-            field = "or:" + field
+            field = f"or:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = AzureFilterSerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())
@@ -156,12 +156,12 @@ class AzureGroupBySerializerTest(TestCase):
     def test_all_group_by_op_fields(self):
         """Test that the allowed fields pass."""
         for field in AzureGroupBySerializer._opfields:
-            field = "and:" + field
+            field = f"and:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = AzureGroupBySerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())
         for field in AzureGroupBySerializer._opfields:
-            field = "or:" + field
+            field = f"or:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = AzureGroupBySerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())

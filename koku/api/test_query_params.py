@@ -89,10 +89,10 @@ class QueryParametersTests(TestCase):
         """
 
         def fake_tags():
-            fake_tags = []
-            for _ in range(0, random.randint(2, 10)):
-                fake_tags.append({"key": self.FAKE.word(), "value": self.FAKE.word()})
-            return fake_tags
+            return [
+                {"key": self.FAKE.word(), "value": self.FAKE.word()}
+                for _ in range(random.randint(2, 10))
+            ]
 
         fake_request = Mock(
             spec=HttpRequest,
@@ -679,9 +679,7 @@ class QueryParametersTests(TestCase):
             provider = provider.lower()
             with self.subTest(provider=provider):
                 temp = params._get_providers(provider)
-                result = []
-                for res in temp:
-                    result.append(res[2])
+                result = [res[2] for res in temp]
                 expected = ACCESS_KEYS[provider]
                 self.assertEqual(sorted(result), sorted(expected))
 

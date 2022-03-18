@@ -70,7 +70,7 @@ class OCPTagsViewTest(IamTestCase):
                 "key_only": True,
                 "filter[enabled]": case.get("enabled"),
             }
-            url = url + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -99,7 +99,7 @@ class OCPTagsViewTest(IamTestCase):
                 "key_only": False,
                 "filter[enabled]": False,
             }
-            url = url + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             data = response.json()
@@ -131,7 +131,7 @@ class OCPTagsViewTest(IamTestCase):
                 "filter[type]": case.get("type"),
                 "filter[enabled]": True,
             }
-            url = url + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             data = response.json()
@@ -160,7 +160,7 @@ class OCPTagsViewTest(IamTestCase):
             "filter[time_scope_units]": "day",
             "filter[and:project]": projects,
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -190,7 +190,7 @@ class OCPTagsViewTest(IamTestCase):
         url = reverse("openshift-tags")
         client = APIClient()
         params = {"key_only": False, "filter[enabled]": False}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
@@ -203,7 +203,7 @@ class OCPTagsViewTest(IamTestCase):
         url = reverse("openshift-tags")
         client = APIClient()
         params = {"key_only": False, "filter[enabled]": False, "filter[cluster]": "OCP-on-AWS"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()

@@ -173,9 +173,7 @@ class AzureReportQueryHandler(ReportQueryHandler):
 
                 try:
                     ciso8601.parse_datetime(date_str)
-                except ValueError:
-                    return False
-                except TypeError:
+                except (ValueError, TypeError):
                     return False
                 return True
 
@@ -240,13 +238,11 @@ class AzureReportQueryHandler(ReportQueryHandler):
         query_data = query.annotate(**self.annotations)
         query_data = query_data.values(*query_group_by)
         aggregates = self._mapper.report_type_map.get("aggregates")
-        counts = None
-
         total_query = query.aggregate(**aggregates)
         for unit_key, unit_value in units.items():
             total_query[unit_key] = unit_value
 
-        if counts:
+        if counts := None:
             total_query["count"] = counts
         self._pack_data_object(total_query, **self._mapper.PACK_DEFINITIONS)
 

@@ -167,10 +167,10 @@ class Provider(models.Model):
             pass
         else:
             # These values determine if Provider credentials have been updated:
-            if provider.authentication != self.authentication or provider.billing_source != self.billing_source:
-                should_ingest = True
-            else:
-                should_ingest = False
+            should_ingest = (
+                provider.authentication != self.authentication
+                or provider.billing_source != self.billing_source
+            )
 
         # Commit the new/updated Provider to the DB
         super().save(*args, **kwargs)

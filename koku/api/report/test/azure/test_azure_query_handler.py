@@ -221,7 +221,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         for filt in handler._mapper.report_type_map.get("filter"):
             if filt:
                 qf = QueryFilter(**filt)
-                filters.update({qf.composed_query_string(): qf.parameter})
+                filters[qf.composed_query_string()] = qf.parameter
         current_totals = self.get_totals_costs_by_time_scope(aggregates, filters)
         expected_cost_total = current_totals.get("cost_total")
         self.assertIsNotNone(expected_cost_total)
@@ -261,7 +261,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         for filt in handler._mapper.report_type_map.get("filter"):
             if filt:
                 qf = QueryFilter(**filt)
-                filters.update({qf.composed_query_string(): qf.parameter})
+                filters[qf.composed_query_string()] = qf.parameter
         current_totals = self.get_totals_costs_by_time_scope(aggregates, filters)
         expected_cost_total = current_totals.get("cost_total")
         self.assertIsNotNone(expected_cost_total)
@@ -524,8 +524,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         self.assertIsNotNone(query_output.get("total"))
         total = query_output.get("total")
         aggregates = handler._mapper.report_type_map.get("aggregates")
-        filters = {**self.this_month_filter}
-        filters["resource_location__icontains"] = location
+        filters = {**self.this_month_filter, "resource_location__icontains": location}
         current_totals = self.get_totals_costs_by_time_scope(aggregates, filters)
         expected_cost_total = current_totals.get("cost_total")
         self.assertIsNotNone(expected_cost_total)
@@ -593,7 +592,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         for filt in handler._mapper.report_type_map.get("filter"):
             if filt:
                 qf = QueryFilter(**filt)
-                filters.update({qf.composed_query_string(): qf.parameter})
+                filters[qf.composed_query_string()] = qf.parameter
         current_totals = self.get_totals_costs_by_time_scope(aggregates, filters)
         expected_cost_total = current_totals.get("cost_total")
         self.assertIsNotNone(expected_cost_total)
@@ -625,8 +624,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         self.assertIsNotNone(query_output.get("total"))
         total = query_output.get("total")
         aggregates = handler._mapper.report_type_map.get("aggregates")
-        filters = {**self.this_month_filter}
-        filters["resource_location__icontains"] = location
+        filters = {**self.this_month_filter, "resource_location__icontains": location}
         current_totals = self.get_totals_costs_by_time_scope(aggregates, filters)
         expected_cost_total = current_totals.get("cost_total")
         self.assertIsNotNone(expected_cost_total)
@@ -660,8 +658,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         self.assertIsNotNone(query_output.get("total"))
         total = query_output.get("total")
         aggregates = handler._mapper.report_type_map.get("aggregates")
-        filters = {**self.this_month_filter}
-        filters["resource_location__icontains"] = location
+        filters = {**self.this_month_filter, "resource_location__icontains": location}
         current_totals = self.get_totals_costs_by_time_scope(aggregates, filters)
         expected_cost_total = current_totals.get("cost_total")
         self.assertIsNotNone(expected_cost_total)
@@ -1046,7 +1043,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         handler = AzureTagQueryHandler(query_params)
         tag_keys = handler.get_tag_keys()
         filter_key = tag_keys[0]
-        tag_keys = ["tag:" + tag for tag in tag_keys]
+        tag_keys = [f"tag:{tag}" for tag in tag_keys]
 
         ag_key = "cost_total"
         with tenant_context(self.tenant):
@@ -1083,7 +1080,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         handler = AzureTagQueryHandler(query_params)
         tag_keys = handler.get_tag_keys()
         filter_key = tag_keys[0]
-        tag_keys = ["tag:" + tag for tag in tag_keys]
+        tag_keys = [f"tag:{tag}" for tag in tag_keys]
 
         ag_key = "cost_total"
         with tenant_context(self.tenant):
@@ -1109,7 +1106,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         handler = AzureTagQueryHandler(query_params)
         tag_keys = handler.get_tag_keys()
         group_by_key = tag_keys[0]
-        tag_keys = ["tag:" + tag for tag in tag_keys]
+        tag_keys = [f"tag:{tag}" for tag in tag_keys]
 
         ag_key = "cost_total"
         with tenant_context(self.tenant):
@@ -1124,7 +1121,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
         data = handler.execute_query()
         data_totals = data.get("total", {})
         data = data.get("data", [])
-        expected_keys = ["date", group_by_key + "s"]
+        expected_keys = ["date", f'{group_by_key}s']
         for entry in data:
             self.assertEqual(list(entry.keys()), expected_keys)
         result = data_totals.get("cost", {}).get("total")
@@ -1173,7 +1170,7 @@ class AzureReportQueryHandlerTest(IamTestCase):
                 handler = AzureReportQueryHandler(query_params)
                 self.assertEqual(handler.query_table, table)
 
-    def test_source_uuid_mapping(self):  # noqa: C901
+    def test_source_uuid_mapping(self):    # noqa: C901
         """Test source_uuid is mapped to the correct source."""
         # Find the correct expected source uuid:
         with tenant_context(self.tenant):
@@ -1197,10 +1194,12 @@ class AzureReportQueryHandlerTest(IamTestCase):
                     for _, value in dictionary.items():
                         if isinstance(value, list):
                             for item in value:
-                                if isinstance(item, dict):
-                                    if "values" in item.keys():
-                                        value = item["values"][0]
-                                        source_uuid_list.extend(value.get("source_uuid"))
+                                if (
+                                    isinstance(item, dict)
+                                    and "values" in item.keys()
+                                ):
+                                    value = item["values"][0]
+                                    source_uuid_list.extend(value.get("source_uuid"))
         self.assertNotEquals(source_uuid_list, [])
         for source_uuid in source_uuid_list:
             self.assertIn(source_uuid, expected_source_uuids)

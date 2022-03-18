@@ -393,7 +393,7 @@ class OCPAWSQueryHandlerTest(IamTestCase):
         handler = OCPAWSReportQueryHandler(query_params)
         self.assertEqual(handler.query_table, OCPAWSDatabaseSummaryP)
 
-    def test_source_uuid_mapping(self):  # noqa: C901
+    def test_source_uuid_mapping(self):    # noqa: C901
         """Test source_uuid is mapped to the correct source."""
         endpoints = [OCPAWSCostView, OCPAWSInstanceTypeView, OCPAWSStorageView]
         with tenant_context(self.tenant):
@@ -411,10 +411,12 @@ class OCPAWSQueryHandlerTest(IamTestCase):
                     for _, value in dictionary.items():
                         if isinstance(value, list):
                             for item in value:
-                                if isinstance(item, dict):
-                                    if "values" in item.keys():
-                                        value = item["values"][0]
-                                        source_uuid_list.extend(value.get("source_uuid"))
+                                if (
+                                    isinstance(item, dict)
+                                    and "values" in item.keys()
+                                ):
+                                    value = item["values"][0]
+                                    source_uuid_list.extend(value.get("source_uuid"))
         self.assertNotEquals(source_uuid_list, [])
         for source_uuid in source_uuid_list:
             self.assertIn(source_uuid, expected_source_uuids)

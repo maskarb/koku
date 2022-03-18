@@ -61,7 +61,7 @@ class AWSReportViewTest(IamTestCase):
 
     def test_with_limit_params(self):
         """Test the _get_group_by method with limit and group by params."""
-        url = self.url + "?filter[limit]=1"
+        url = f'{self.url}?filter[limit]=1'
         response = self.client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -69,7 +69,7 @@ class AWSReportViewTest(IamTestCase):
         """Test that you can filter by org_unit_id"""
         data_info = AWSOrganizationalUnit.objects.first()
         expected_org_id = data_info.org_unit_id
-        url = self.url + f"?filter[org_unit_id]={expected_org_id}"
+        url = f"{self.url}?filter[org_unit_id]={expected_org_id}"
         response = self.client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(response.data.get("data"))
@@ -109,14 +109,14 @@ class AWSReportViewTest(IamTestCase):
         """Test that the moved account only shows up in new location."""
         moved_account = "account 003"
         previous_ou = "OU_002"
-        previous_url = self.url + f"?filter[org_unit_id]={previous_ou}"
+        previous_url = f"{self.url}?filter[org_unit_id]={previous_ou}"
         response = self.client.get(previous_url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data_row = response.data.get("data")[0]
         self.assertNotIn(moved_account, data_row.get("accounts"))
 
         current_ou = "OU_003"
-        current_url = self.url + f"?filter[org_unit_id]={current_ou}"
+        current_url = f"{self.url}?filter[org_unit_id]={current_ou}"
         response = self.client.get(current_url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data_row = response.data.get("data")[0]
@@ -126,14 +126,14 @@ class AWSReportViewTest(IamTestCase):
         """Test that the move ou only shows up in new location."""
         moved_child_ou = "OU_005"
         previous_parent = "OU_002"
-        previous_url = self.url + f"?filter[org_unit_id]={previous_parent}"
+        previous_url = f"{self.url}?filter[org_unit_id]={previous_parent}"
         response = self.client.get(previous_url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data_row = response.data.get("data")[0]
         self.assertNotIn(moved_child_ou, data_row.get("sub_orgs"))
 
         new_parent = "OU_001"
-        new_parent_url = self.url + f"?filter[org_unit_id]={new_parent}"
+        new_parent_url = f"{self.url}?filter[org_unit_id]={new_parent}"
         response = self.client.get(new_parent_url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data_row = response.data.get("data")[0]

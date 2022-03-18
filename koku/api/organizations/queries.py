@@ -141,7 +141,7 @@ class OrgQueryHandler(QueryHandler):
         filters = QueryFilterCollection()
         composed_filter = Q()
         for filter_key in self.SUPPORTED_FILTERS:
-            operator_key = operator + ":" + filter_key
+            operator_key = f'{operator}:{filter_key}'
             filter_value = self.parameters.get_filter(operator_key)
             logical_operator = operator
             if filter_value and len(filter_value) < 2:
@@ -231,8 +231,8 @@ class OrgQueryHandler(QueryHandler):
 
     def get_org_units(self):
         """Get a list of org keys to build upon."""
-        org_units = list()
-        org_id_list = list()
+        org_units = []
+        org_id_list = []
         with tenant_context(self.tenant):
             for source in self.data_sources:
                 # Grab columns for this query

@@ -34,10 +34,10 @@ class CostModelResourceTypesView(generics.ListAPIView):
 
     @method_decorator(vary_on_headers(CACHE_RH_IDENTITY_HEADER))
     def list(self, request):
-        supported_query_params = ["limit"]
-        error_message = {}
         # Test for only supported query_params
         if self.request.query_params:
+            supported_query_params = ["limit"]
+            error_message = {}
             for key in self.request.query_params:
                 if key not in supported_query_params:
                     error_message[key] = [{"Unsupported parameter"}]

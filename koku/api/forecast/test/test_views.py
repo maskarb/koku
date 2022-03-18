@@ -38,7 +38,7 @@ class AWSCostForecastViewTest(IamTestCase):
     @RbacPermissions({"aws.account": {"read": ["*"]}, "aws.organizational_unit": {"read": ["*"]}})
     def test_get_forecast_invalid(self):
         """Test that getting a forecast works."""
-        url = "%s?invalid=parameter" % reverse("aws-cost-forecasts")
+        url = f'{reverse("aws-cost-forecasts")}?invalid=parameter'
         client = APIClient()
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

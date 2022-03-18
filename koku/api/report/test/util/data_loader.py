@@ -30,7 +30,7 @@ class DataLoader(ABC):
             end_date += relativedelta(days=1)
         n_days_ago = self.dh.n_days_ago(end_date, num_days)
         start_date = n_days_ago
-        if self.dh.this_month_start > n_days_ago:
+        if self.dh.this_month_start > start_date:
             start_date = self.dh.this_month_start
 
         prev_month_start = start_date - relativedelta(months=1)

@@ -22,4 +22,4 @@ with open("koku-manifest", "w") as manifest:
             ref = value["ref"]
             manifest.write(f"mgmt_services/cost-mgmt:koku/python-{name}:{ref}.pipfile\n")
         else:
-            raise "unable to parse %s" % value
+            raise f"unable to parse {value}"

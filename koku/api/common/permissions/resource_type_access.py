@@ -13,7 +13,4 @@ class ResourceTypeAccessPermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
         """Check permission to view resource-type data."""
-        if request.user.admin:
-            return True
-
-        return False
+        return bool(request.user.admin)

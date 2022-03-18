@@ -56,9 +56,12 @@ class CostModelManager:
     @transaction.atomic
     def update_provider_uuids(self, provider_uuids):
         """Update rate with new provider uuids."""
-        current_providers_for_instance = []
-        for rate_map_instance in CostModelMap.objects.filter(cost_model=self._model):
-            current_providers_for_instance.append(str(rate_map_instance.provider_uuid))
+        current_providers_for_instance = [
+            str(rate_map_instance.provider_uuid)
+            for rate_map_instance in CostModelMap.objects.filter(
+                cost_model=self._model
+            )
+        ]
 
         providers_to_delete = set(current_providers_for_instance).difference(provider_uuids)
         providers_to_create = set(provider_uuids).difference(current_providers_for_instance)
@@ -125,5 +128,7 @@ class CostModelManager:
         providers_query = CostModelMap.objects.filter(cost_model=self._model)
         provider_uuids = [provider.provider_uuid for provider in providers_query]
         providers_qs_list = Provider.objects.filter(uuid__in=provider_uuids)
-        provider_names_uuids = [{"uuid": str(provider.uuid), "name": provider.name} for provider in providers_qs_list]
-        return provider_names_uuids
+        return [
+            {"uuid": str(provider.uuid), "name": provider.name}
+            for provider in providers_qs_list
+        ]
