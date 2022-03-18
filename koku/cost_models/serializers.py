@@ -37,9 +37,7 @@ class UUIDKeyRelatedField(serializers.PrimaryKeyRelatedField):
 
     def to_representation(self, value):
         """Override to_representation, just show uuid."""
-        if self.pk_field is not None:
-            return value.uuid
-        return value.pk
+        return value.uuid if self.pk_field is not None else value.pk
 
     def display_value(self, instance):
         """Override display_value, just show uuid."""
@@ -82,12 +80,13 @@ class TieredRateSerializer(serializers.Serializer):
         """Validate that usage_end is greater than usage_start."""
         usage_start = data.get("usage", {}).get("usage_start")
         usage_end = data.get("usage", {}).get("usage_end")
-        if usage_start is not None and usage_end is not None:
-            if Decimal(usage_start) >= Decimal(usage_end):
-                raise serializers.ValidationError("A tiered rate usage_start must be less than usage_end.")
-            return data
-        else:
-            return data
+        if (
+            usage_start is not None
+            and usage_end is not None
+            and Decimal(usage_start) >= Decimal(usage_end)
+        ):
+            raise serializers.ValidationError("A tiered rate usage_start must be less than usage_end.")
+        return data
 
 
 class TagRateValueSerializer(serializers.Serializer):
@@ -117,9 +116,12 @@ class TagRateValueSerializer(serializers.Serializer):
             raise serializers.ValidationError("A tag rate usage_start must be positive.")
         if usage_end and usage_end <= 0:
             raise serializers.ValidationError("A tag rate usage_end must be positive.")
-        if usage_start is not None and usage_end is not None:
-            if Decimal(usage_start) >= Decimal(usage_end):
-                raise serializers.ValidationError("A tag rate usage_start must be less than usage_end.")
+        if (
+            usage_start is not None
+            and usage_end is not None
+            and Decimal(usage_start) >= Decimal(usage_end)
+        ):
+            raise serializers.ValidationError("A tag rate usage_start must be less than usage_end.")
         return usage
 
 
@@ -159,13 +161,11 @@ class TagRateSerializer(serializers.Serializer):
     def _convert_to_decimal(tag_value):
         for decimal_key in TagRateValueSerializer.DECIMALS:
             if decimal_key in tag_value:
-                value = tag_value.get(decimal_key)
-                if value:
+                if value := tag_value.get(decimal_key):
                     tag_value[decimal_key] = Decimal(value)
             usage = tag_value.get("usage", {})
             if decimal_key in usage:
-                value = usage.get(decimal_key)
-                if value:
+                if value := usage.get(decimal_key):
                     usage[decimal_key] = Decimal(value)
         return tag_value
 
@@ -191,8 +191,7 @@ class RateSerializer(serializers.Serializer):
     @staticmethod
     def _convert_to_decimal(rate):
         for decimal_key in RateSerializer.DECIMALS:
-            value = rate.get(decimal_key)
-            if value:
+            if value := rate.get(decimal_key):
                 decimal_value = Decimal(value)
                 rate[decimal_key] = decimal_value
         return rate
@@ -208,11 +207,8 @@ class RateSerializer(serializers.Serializer):
             if (
                 next_tier is not None and usage_start is not None and Decimal(usage_start) > Decimal(next_tier)
             ):  # noqa:W503
-                error_msg = (
-                    "tiered_rate must not have gaps between tiers."
-                    "usage_start of {} should be less than or equal to the"
-                    " usage_end {} of the previous tier.".format(usage_start, next_tier)
-                )
+                error_msg = f"tiered_rate must not have gaps between tiers.usage_start of {usage_start} should be less than or equal to the usage_end {next_tier} of the previous tier."
+
                 raise serializers.ValidationError(error_msg)
             next_tier = usage_end
 
@@ -225,11 +221,8 @@ class RateSerializer(serializers.Serializer):
             usage_end = tier.get("usage", {}).get("usage_end")
 
             if usage_end != next_bucket_usage_start:
-                error_msg = (
-                    "tiered_rate must not have overlapping tiers."
-                    " usage_start value {} should equal to the"
-                    " usage_end value of the next tier, not {}.".format(usage_end, next_bucket_usage_start)
-                )
+                error_msg = f"tiered_rate must not have overlapping tiers. usage_start value {usage_end} should equal to the usage_end value of the next tier, not {next_bucket_usage_start}."
+
                 raise serializers.ValidationError(error_msg)
 
     @staticmethod
@@ -294,7 +287,7 @@ class RateSerializer(serializers.Serializer):
 
         rate_keys_str = ", ".join(str(rate_key) for rate_key in self.RATE_TYPES)
         if data.get("metric").get("name") not in [metric for metric, _ in metric_constants.METRIC_CHOICES]:
-            error_msg = "{} is an invalid metric".format(data.get("metric").get("name"))
+            error_msg = f'{data.get("metric").get("name")} is an invalid metric'
             raise serializers.ValidationError(error_msg)
 
         data["cost_type"] = self.validate_cost_type(data.get("metric").get("name"), data.get("cost_type"))
@@ -320,11 +313,7 @@ class RateSerializer(serializers.Serializer):
             "description": rate_obj.get("description", ""),
         }
 
-        # Specifically handling only tiered rates now
-        # with the expectation that this code will be generalized
-        # when other rate types (e.g. markup) are introduced
-        tiered_rates = rate_obj.get("tiered_rates", [])
-        if tiered_rates:
+        if tiered_rates := rate_obj.get("tiered_rates", []):
             for rates in tiered_rates:
                 if isinstance(rates, list):
                     for rate in rates:
@@ -346,8 +335,7 @@ class RateSerializer(serializers.Serializer):
             out.update({"tiered_rates": tiered_rates, "cost_type": rate_obj.get("cost_type")})
             return out
 
-        tag_rate = rate_obj.get("tag_rates", {})
-        if tag_rate:
+        if tag_rate := rate_obj.get("tag_rates", {}):
             tag_values = tag_rate.get("tag_values", [])
             for tag_value in tag_values:
                 TagRateSerializer._convert_to_decimal(tag_value)
@@ -410,15 +398,12 @@ class CostModelSerializer(serializers.Serializer):
     @property
     def source_type_internal_value_map(self):
         """Map display name to internal source type."""
-        internal_map = {}
-        for key, value in SOURCE_TYPE_MAP.items():
-            internal_map[value] = key
-        return internal_map
+        return {value: key for key, value in SOURCE_TYPE_MAP.items()}
 
     @staticmethod
     def _validate_one_unique_tag_key_per_metric_per_cost_type(tag_rate_list):
         """Validates that the tag rates has one unique tag_key per metric per cost_type."""
-        tag_metrics = dict()
+        tag_metrics = {}
         for cost_type in metric_constants.COST_TYPE_CHOICES:
             cost_type = cost_type[0]
             tag_metrics[cost_type] = {}
@@ -453,7 +438,10 @@ class CostModelSerializer(serializers.Serializer):
         ):
             return data
         if data["source_type"] not in self.metric_map.keys():
-            raise serializers.ValidationError("{} is not a valid source.".format(data["source_type"]))
+            raise serializers.ValidationError(
+                f'{data["source_type"]} is not a valid source.'
+            )
+
         return data
 
     def _get_metric_display_data(self, source_type, metric):
@@ -508,9 +496,11 @@ class CostModelSerializer(serializers.Serializer):
     def update(self, instance, validated_data, *args, **kwargs):
         """Update the rate object in the database."""
         source_uuids = validated_data.pop("source_uuids", [])
-        new_providers_for_instance = []
-        for uuid in source_uuids:
-            new_providers_for_instance.append(str(Provider.objects.filter(uuid=uuid).first().uuid))
+        new_providers_for_instance = [
+            str(Provider.objects.filter(uuid=uuid).first().uuid)
+            for uuid in source_uuids
+        ]
+
         try:
             manager = CostModelManager(cost_model_uuid=instance.uuid)
             manager.update_provider_uuids(new_providers_for_instance)

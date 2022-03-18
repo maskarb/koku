@@ -37,7 +37,6 @@ def get_json(path):
 @renderer_classes((JSONRenderer,))
 def openapi(_):
     """Provide the openapi information."""
-    data = get_json(OPENAPI_FILE_NAME)
-    if data:
+    if data := get_json(OPENAPI_FILE_NAME):
         return Response(data)
     return Response(status=status.HTTP_404_NOT_FOUND)

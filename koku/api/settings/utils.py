@@ -29,8 +29,12 @@ def create_subform(name, title, fields):
     Returns:
         (Dict) - Subform component.
     """
-    subform = {"title": title, "name": name, "fields": fields, "component": "sub-form"}
-    return subform
+    return {
+        "title": title,
+        "name": name,
+        "fields": fields,
+        "component": "sub-form",
+    }
 
 
 def create_plain_text(name, label, variant):
@@ -46,8 +50,12 @@ def create_plain_text(name, label, variant):
     Returns:
         [Dict] - plain text component.
     """
-    plain_text = {"component": "plain-text", "label": label, "name": name, "variant": variant}
-    return plain_text
+    return {
+        "component": "plain-text",
+        "label": label,
+        "name": name,
+        "variant": variant,
+    }
 
 
 def create_plain_text_with_doc(name, label, doc_link):
@@ -62,8 +70,12 @@ def create_plain_text_with_doc(name, label, doc_link):
     Returns:
         [Dict] - plain text with links component.
     """
-    plain_text = {"component": "plain-text-with-links", "text": label, "linkProps": [doc_link], "name": name}
-    return plain_text
+    return {
+        "component": "plain-text-with-links",
+        "text": label,
+        "linkProps": [doc_link],
+        "name": name,
+    }
 
 
 def generate_doc_link(path):
@@ -136,8 +148,7 @@ def get_selected_currency_or_setup(schema):
     with schema_context(schema):
         if not UserSettings.objects.exists():
             set_currency(schema)
-        currency = UserSettings.objects.all().first().settings["currency"]
-        return currency
+        return UserSettings.objects.all().first().settings["currency"]
 
 
 def get_currency_options():
@@ -172,7 +183,7 @@ def set_currency(schema, currency_code=KOKU_DEFAULT_CURRENCY):
         supported_currency_codes = [code.get("code") for code in CURRENCIES]
 
         if currency_code not in supported_currency_codes:
-            raise ValueError(currency_code + " is not a supported currency")
+            raise ValueError(f'{currency_code} is not a supported currency')
 
         if not account_currency_setting:
             set_default_user_settings()
@@ -197,8 +208,7 @@ def get_selected_cost_type_or_setup(schema):
     with schema_context(schema):
         if not UserSettings.objects.exists():
             set_default_user_settings()
-        cost_type = UserSettings.objects.all().first().settings["cost_type"]
-        return cost_type
+        return UserSettings.objects.all().first().settings["cost_type"]
 
 
 def get_cost_type_options():

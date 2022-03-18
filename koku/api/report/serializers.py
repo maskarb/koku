@@ -33,9 +33,11 @@ def handle_invalid_fields(this, data):
         unknown_keys = set(this.initial_data.keys()) - set(this.fields.keys())
 
     if unknown_keys:
-        error = {}
-        for unknown_key in unknown_keys:
-            error[unknown_key] = _("Unsupported parameter or invalid value")
+        error = {
+            unknown_key: _("Unsupported parameter or invalid value")
+            for unknown_key in unknown_keys
+        }
+
         raise serializers.ValidationError(error)
     return data
 
@@ -91,11 +93,19 @@ def validate_field(this, field, serializer_cls, value, **kwargs):
 def add_operator_specified_fields(fields, field_list):
     """Add the specified and: and or: fields to the serialzer."""
     and_fields = {
-        "and:" + field: StringOrListField(child=serializers.CharField(), required=False) for field in field_list
+        f"and:{field}": StringOrListField(
+            child=serializers.CharField(), required=False
+        )
+        for field in field_list
     }
+
     or_fields = {
-        "or:" + field: StringOrListField(child=serializers.CharField(), required=False) for field in field_list
+        f"or:{field}": StringOrListField(
+            child=serializers.CharField(), required=False
+        )
+        for field in field_list
     }
+
     fields.update(and_fields)
     fields.update(or_fields)
     return fields
@@ -339,7 +349,7 @@ class ParamSerializer(BaseSerializer):
             error = {"error": "The parameters [start_date, end_date] must both be defined."}
             raise serializers.ValidationError(error)
 
-        if start_date and end_date and (start_date > end_date):
+        if start_date and start_date > end_date:
             error = {"error": "start_date must be a date that is before end_date."}
             raise serializers.ValidationError(error)
 
@@ -413,9 +423,8 @@ class ParamSerializer(BaseSerializer):
         if value >= materialized_view_month_start(dh).date() and value <= dh.today.date():
             return value
 
-        error = "Parameter start_date must be from {} to {}".format(
-            materialized_view_month_start(dh).date(), dh.today.date()
-        )
+        error = f"Parameter start_date must be from {materialized_view_month_start(dh).date()} to {dh.today.date()}"
+
         raise serializers.ValidationError(error)
 
     def validate_end_date(self, value):
@@ -423,7 +432,6 @@ class ParamSerializer(BaseSerializer):
         dh = DateHelper()
         if value >= materialized_view_month_start(dh).date() and value <= dh.today.date():
             return value
-        error = "Parameter end_date must be from {} to {}".format(
-            materialized_view_month_start(dh).date(), dh.today.date()
-        )
+        error = f"Parameter end_date must be from {materialized_view_month_start(dh).date()} to {dh.today.date()}"
+
         raise serializers.ValidationError(error)

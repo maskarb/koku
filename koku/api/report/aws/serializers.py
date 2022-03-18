@@ -129,11 +129,11 @@ class QueryParamSerializer(ParamSerializer):
         org_unit_group_keys = ["org_unit_id", "or:org_unit_id"]
         group_by_keys = group_by_params.keys()
 
-        key_used = []
-        for acceptable_key in org_unit_group_keys:
-            if acceptable_key in group_by_keys:
-                key_used.append(acceptable_key)
-        if key_used:
+        if key_used := [
+            acceptable_key
+            for acceptable_key in org_unit_group_keys
+            if acceptable_key in group_by_keys
+        ]:
             if len(key_used) > 1:
                 # group_by[org_unit_id]=x&group_by[or:org_unit_id]=OU_001 is invalid
                 # If we ever want to change this we need to decide what would be appropriate to see
@@ -150,13 +150,15 @@ class QueryParamSerializer(ParamSerializer):
                 # here. Such as all org units or top level org units
                 error = {"org_unit_id": _("Unsupported parameter or invalid value")}
                 raise serializers.ValidationError(error)
-            if "or:" not in key_used:
-                if isinstance(group_by_params.get(key_used), list):
-                    if len(group_by_params.get(key_used)) > 1:
-                        # group_by[org_unit_id]=x&group_by[org_unit_id]=OU_001 is invalid
-                        # because no child nodes would ever intersect due to the tree structure.
-                        error = {"or_unit_id": _("Multiple org_unit_id must be represented with the or: prefix.")}
-                        raise serializers.ValidationError(error)
+            if (
+                "or:" not in key_used
+                and isinstance(group_by_params.get(key_used), list)
+                and len(group_by_params.get(key_used)) > 1
+            ):
+                # group_by[org_unit_id]=x&group_by[org_unit_id]=OU_001 is invalid
+                # because no child nodes would ever intersect due to the tree structure.
+                error = {"or_unit_id": _("Multiple org_unit_id must be represented with the or: prefix.")}
+                raise serializers.ValidationError(error)
         return value
 
     def validate_order_by(self, value):

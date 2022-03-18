@@ -31,15 +31,12 @@ def get_paginator(filter_query_params, count, group_by_params=False):
         "group_by[org_unit_id]" in group_by_params or "group_by[or:org_unit_id]" in group_by_params
     ):
         paginator = OrgUnitPagination(filter_query_params)
-        paginator.others = count
+    elif "offset" in filter_query_params:
+        paginator = ReportRankedPagination()
+        paginator.count = count
     else:
-        if "offset" in filter_query_params:
-            paginator = ReportRankedPagination()
-            paginator.count = count
-            paginator.others = count
-        else:
-            paginator = ReportPagination()
-            paginator.others = count
+        paginator = ReportPagination()
+    paginator.others = count
     return paginator
 
 
@@ -108,7 +105,7 @@ def _convert_units(converter, data, to_unit):
                     from_unit, suffix = from_unit.split("-")
                 new_value = converter.convert_quantity(value, from_unit, to_unit)
                 total["value"] = new_value.magnitude
-                new_unit = to_unit + "-" + suffix if suffix else to_unit
+                new_unit = f'{to_unit}-{suffix}' if suffix else to_unit
                 total["units"] = new_unit
             elif key == "total":
                 total = data[key]
@@ -117,7 +114,7 @@ def _convert_units(converter, data, to_unit):
                     from_unit, suffix = from_unit.split("-")
                 new_value = converter.convert_quantity(total, from_unit, to_unit)
                 data["total"] = new_value.magnitude
-                new_unit = to_unit + "-" + suffix if suffix else to_unit
+                new_unit = f'{to_unit}-{suffix}' if suffix else to_unit
                 data["units"] = new_unit
             else:
                 _convert_units(converter, data[key], to_unit)
@@ -157,8 +154,7 @@ class ReportView(APIView):
         max_rank = handler.max_rank
 
         if "units" in params.parameters:
-            from_unit = _find_unit()(output["data"])
-            if from_unit:
+            if from_unit := _find_unit()(output["data"]):
                 try:
                     to_unit = params.parameters.get("units")
                     unit_converter = UnitConverter()

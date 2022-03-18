@@ -71,25 +71,22 @@ class SourcesClientDataGenerator:
     def create_s3_bucket(self, parameters, billing_source):
         json_data = {"billing_source": {"bucket": billing_source}}
 
-        url = "{}/{}/".format(self._base_url, parameters.get("source_id"))
-        response = requests.patch(url, headers=self._identity_header, json=json_data)
-        return response
+        url = f'{self._base_url}/{parameters.get("source_id")}/'
+        return requests.patch(url, headers=self._identity_header, json=json_data)
 
     def create_azure_storage(self, parameters, resource_group, storage_account):
         json_data = {
             "billing_source": {"data_source": {"resource_group": resource_group, "storage_account": storage_account}}
         }
 
-        url = "{}/{}/".format(self._base_url, parameters.get("source_id"))
-        response = requests.patch(url, headers=self._identity_header, json=json_data)
-        return response
+        url = f'{self._base_url}/{parameters.get("source_id")}/'
+        return requests.patch(url, headers=self._identity_header, json=json_data)
 
     def create_azure_subscription_id(self, parameters, subscription_id):
         json_data = {"authentication": {"credentials": {"subscription_id": subscription_id}}}
 
-        url = "{}/{}/".format(self._base_url, parameters.get("source_id"))
-        response = requests.patch(url, headers=self._identity_header, json=json_data)
-        return response
+        url = f'{self._base_url}/{parameters.get("source_id")}/'
+        return requests.patch(url, headers=self._identity_header, json=json_data)
 
 
 class SourcesDataGenerator:
@@ -103,20 +100,17 @@ class SourcesDataGenerator:
         self._application_type_map = self.get_types_map("application_types")
 
     def get_types_map(self, endpoint):
-        type_map = {}
         url = f"{self._base_url}/{endpoint}"
         r = requests.get(url, headers=self._identity_header)
         response = r.json().get("data")
-        for source in response:
-            type_map[source.get("name")] = source.get("id")
-        return type_map
+        return {source.get("name"): source.get("id") for source in response}
 
     def create_source(self, source_name, source_type, cluster_id=None):
         json_data = {"source_type_id": str(self._source_type_map.get(source_type)), "name": source_name}
         if cluster_id:
             json_data["source_ref"] = cluster_id
 
-        url = "{}/{}".format(self._base_url, "sources")
+        url = f"{self._base_url}/sources"
         r = requests.post(url, headers=self._identity_header, json=json_data)
         response = r.json()
         return response.get("id")
@@ -124,7 +118,7 @@ class SourcesDataGenerator:
     def create_endpoint(self, source_id):
         json_data = {"host": "www.example.com", "path": "/api/v1", "source_id": str(source_id)}
 
-        url = "{}/{}".format(self._base_url, "endpoints")
+        url = f"{self._base_url}/endpoints"
         r = requests.post(url, headers=self._identity_header, json=json_data)
         response = r.json()
         return response.get("id")
@@ -141,7 +135,7 @@ class SourcesDataGenerator:
             "resource_id": str(resource_id),
         }
 
-        url = "{}/{}".format(self._base_url, "authentications")
+        url = f"{self._base_url}/authentications"
         r = requests.post(url, headers=self._identity_header, json=json_data)
         response = r.json()
         return response.get("id")
@@ -157,7 +151,7 @@ class SourcesDataGenerator:
             "resource_id": str(resource_id),
         }
 
-        url = "{}/{}".format(self._base_url, "authentications")
+        url = f"{self._base_url}/authentications"
         r = requests.post(url, headers=self._identity_header, json=json_data)
         response = r.json()
         return response.get("id")
@@ -175,7 +169,7 @@ class SourcesDataGenerator:
             "resource_id": str(resource_id),
         }
 
-        url = "{}/{}".format(self._base_url, "authentications")
+        url = f"{self._base_url}/authentications"
         r = requests.post(url, headers=self._identity_header, json=json_data)
         response = r.json()
         return response.get("id")
@@ -186,7 +180,7 @@ class SourcesDataGenerator:
             "application_type_id": str(self._application_type_map.get(source_type)),
         }
 
-        url = "{}/{}".format(self._base_url, "applications")
+        url = f"{self._base_url}/applications"
         r = requests.post(url, headers=self._identity_header, json=json_data)
         response = r.json()
         return response.get("id")

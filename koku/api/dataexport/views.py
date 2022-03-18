@@ -20,5 +20,4 @@ class DataExportRequestViewSet(
     def get_queryset(self):
         """Get a queryset that only displays the user's data export requests."""
         user = self.request.user
-        queryset = self.queryset.filter(created_by=user)
-        return queryset
+        return self.queryset.filter(created_by=user)

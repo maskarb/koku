@@ -45,10 +45,10 @@ class ProviderMap:
 
     def provider_data(self, provider):
         """Return provider portion of map structure."""
-        for item in self._mapping:
-            if provider in item.get("provider"):
-                return item
-        return None
+        return next(
+            (item for item in self._mapping if provider in item.get("provider")),
+            None,
+        )
 
     def report_type_data(self, report_type, provider):
         """Return report_type portion of map structure."""
@@ -82,7 +82,7 @@ class ProviderMap:
         """Return the appropriate query table for the report type."""
         report_table = self._report_type_map.get("tables", {}).get("query")
         default = self._provider_map.get("tables").get("query")
-        return report_table if report_table else default
+        return report_table or default
 
     @property
     def report_type_map(self):
@@ -99,7 +99,7 @@ class ProviderMap:
         """Return the appropriate query table for the report type."""
         report_specific_column = self._report_type_map.get("tag_column")
         default = self._provider_map.get("tag_column")
-        return report_specific_column if report_specific_column else default
+        return report_specific_column or default
 
     @property
     def cost_units_key(self):

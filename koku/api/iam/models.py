@@ -131,9 +131,7 @@ class Tenant(TenantMixin):
             LOG.error(f"Caught exception {ex.__class__.__name__} during template schema create: {str(ex)}")
             raise ex
 
-        # Strict check here! Both the record and the schema *should* exist!
-        res = bool(template_schema) and schema_exists(self._TEMPLATE_SCHEMA)
-        return res
+        return bool(template_schema) and schema_exists(self._TEMPLATE_SCHEMA)
 
     def _clone_schema(self):
         result = None
@@ -195,9 +193,12 @@ select public.clone_schema(%s, %s, copy_data => true) as "clone_result";
             except Exception as dbe:
                 db_exc = dbe
                 LOG.error(
-                    f"""Exception {dbe.__class__.__name__} cloning"""
-                    + f""" "{self._TEMPLATE_SCHEMA}" to "{self.schema_name}": {str(dbe)}"""
+                    (
+                        f"""Exception {db_exc.__class__.__name__} cloning"""
+                        + f""" "{self._TEMPLATE_SCHEMA}" to "{self.schema_name}": {str(db_exc)}"""
+                    )
                 )
+
                 LOG.info("Setting transaction to exit with ROLLBACK")
                 transaction.set_rollback(True)  # Set this transaction context to issue a rollback on exit
             else:

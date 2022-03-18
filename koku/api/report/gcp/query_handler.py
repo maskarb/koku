@@ -199,9 +199,7 @@ class GCPReportQueryHandler(ReportQueryHandler):
 
                 try:
                     ciso8601.parse_datetime(date_str)
-                except ValueError:
-                    return False
-                except TypeError:
+                except (ValueError, TypeError):
                     return False
                 return True
 

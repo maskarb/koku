@@ -137,19 +137,19 @@ class Settings:
         """
         tag_key_text_name = f"{SETTINGS_PREFIX}.tag_management.form-text"
         enable_tags_title = create_plain_text(tag_key_text_name, "Enable tags and labels", "h2")
-        tag_key_text_context = (
-            "Enable your data source labels to be used as tag keys for report grouping and filtering."
-            + " Changes will be reflected within 24 hours. <link>Learn more</link>"
-        )
         doc_link = dict(
             href=generate_doc_link(
                 "html-single/managing_cost_data_using_tagging/index"
                 + "#assembly-configuring-tags-and-labels-in-cost-management"
             )
         )
+        tag_key_text_context = (
+            "Enable your data source labels to be used as tag keys for report grouping and filtering."
+            + " Changes will be reflected within 24 hours. <link>Learn more</link>"
+        )
+
         tag_key_text = create_plain_text_with_doc(tag_key_text_name, tag_key_text_context, doc_link)
 
-        sub_form_fields = []
         avail_objs = []
         enabled_objs = []
         for providerName in obtainTagKeysProvidersParams:
@@ -181,9 +181,7 @@ class Settings:
         dual_list_name = f'{"api.settings.tag-management.enabled"}'
         tags_and_labels = create_dual_list_select(dual_list_name, **dual_list_options)
 
-        for field in enable_tags_title, tag_key_text, tags_and_labels:
-            sub_form_fields.append(field)
-
+        sub_form_fields = [enable_tags_title, tag_key_text, tags_and_labels]
         # currency settings TODO: only show in dev mode right now
         if settings.DEVELOPMENT:
             currency_select_name = f'{"api.settings.currency"}'
@@ -197,11 +195,8 @@ class Settings:
             }
             currency = create_select(currency_select_name, **currency_options)
 
-            idx = 0
-            for field in currency_title, currency_select_text, currency:
+            for idx, field in enumerate(currency_title, currency_select_text, currency):
                 sub_form_fields.insert(idx, field)
-                idx += 1
-
         customer = self.request.user.customer
         customer_specific_providers = Provider.objects.filter(customer=customer)
         has_aws_providers = customer_specific_providers.filter(type__icontains=Provider.PROVIDER_AWS).exists()
@@ -222,35 +217,33 @@ class Settings:
             }
             cost_type = create_select(cost_type_select_name, **cost_type_options)
 
-            for field in cost_type_title, cost_type_select_text, cost_type:
-                sub_form_fields.append(field)
-
+            sub_form_fields.extend(iter(cost_type_title, cost_type_select_text, cost_type))
         sub_form_name = f"{SETTINGS_PREFIX}.settings.subform"
         sub_form_title = ""
-        sub_form = create_subform(sub_form_name, sub_form_title, sub_form_fields)
-
-        return sub_form
+        return create_subform(sub_form_name, sub_form_title, sub_form_fields)
 
     def _tag_key_handler(self, settings):
         tag_delimiter = "-"
         updated = [False] * len(obtainTagKeysProvidersParams)
 
         for ix, provider_name in enumerate(obtainTagKeysProvidersParams):
-            enabled_tags_no_abbr = []
             tag_view = obtainTagKeysProvidersParams[provider_name]["tag_view"]
             query_handler = obtainTagKeysProvidersParams[provider_name]["query_handler"]
             enabled_tag_keys = obtainTagKeysProvidersParams[provider_name]["enabled_tag_keys"]
             provider = obtainTagKeysProvidersParams[provider_name]["provider"]
             available, _ = self._obtain_tag_keys(tag_view, query_handler, enabled_tag_keys)
 
-            # build a list of enabled tags for a given provider, removing the provider name prefix
-            for enabled_tag in settings.get("enabled", []):
-                if enabled_tag.startswith(provider_name + tag_delimiter):
-                    enabled_tags_no_abbr.append(enabled_tag.split(tag_delimiter, 1)[1])
+            enabled_tags_no_abbr = [
+                enabled_tag.split(tag_delimiter, 1)[1]
+                for enabled_tag in settings.get("enabled", [])
+                if enabled_tag.startswith(provider_name + tag_delimiter)
+            ]
 
-            invalid_keys = [tag_key for tag_key in enabled_tags_no_abbr if tag_key not in available]
-
-            if invalid_keys:
+            if invalid_keys := [
+                tag_key
+                for tag_key in enabled_tags_no_abbr
+                if tag_key not in available
+            ]:
                 key = "settings"
                 message = f"Invalid tag keys provided: {', '.join(invalid_keys)}."
                 raise ValidationError(error_obj(key, message))
@@ -276,13 +269,18 @@ class Settings:
                             updated[ix] = True
 
                     if len(remove_tags):
-                        LOG.info(f"Updating %d %s key(s) to DISABLED", len(remove_tags), provider_name)
+                        LOG.info("Updating %d %s key(s) to DISABLED", len(remove_tags), provider_name)
                         for rm_tag in remove_tags:
                             rm_tag.delete()
                             updated[ix] = True
 
                     if len(enabled_tags_no_abbr):
-                        LOG.info(f"Updating %d %s key(s) to ENABLED", len(enabled_tags_no_abbr), provider_name)
+                        LOG.info(
+                            "Updating %d %s key(s) to ENABLED",
+                            len(enabled_tags_no_abbr),
+                            provider_name,
+                        )
+
                         for new_tag in enabled_tags_no_abbr:
                             enabled_tag_keys.objects.create(key=new_tag)
                             updated[ix] = True
@@ -308,7 +306,7 @@ class Settings:
             return False
 
         try:
-            LOG.info(f"Updating currency to: " + settings)
+            LOG.info(f"Updating currency to: {settings}")
             set_currency(self.schema, settings)
         except Exception as exp:
             LOG.warning(f"Failed to store new currency settings for schema {self.schema}. Reason: {exp}")
@@ -333,7 +331,7 @@ class Settings:
             return False
 
         try:
-            LOG.info(f"Updating cost_type to: " + settings)
+            LOG.info(f"Updating cost_type to: {settings}")
             set_cost_type(self.schema, settings)
         except Exception as exp:
             LOG.warning(f"Failed to store new cost_type settings for schema {self.schema}. Reason: {exp}")

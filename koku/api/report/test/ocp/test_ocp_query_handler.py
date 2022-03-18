@@ -251,8 +251,7 @@ class OCPReportQueryHandlerTest(IamTestCase):
         self.assertEqual(query_data.get("total", {}).get("capacity", {}).get("value"), total_capacity)
         for entry in query_data.get("data", []):
             date = entry.get("date")
-            values = entry.get("values")
-            if values:
+            if values := entry.get("values"):
                 capacity = values[0].get("capacity", {}).get("value")
                 self.assertEqual(capacity, daily_capacity[date])
 
@@ -385,7 +384,7 @@ class OCPReportQueryHandlerTest(IamTestCase):
 
             aggregates = handler._mapper.report_type_map.get("aggregates")
             metric_sum = query.aggregate(**aggregates)
-            query_sum = {key: metric_sum.get(key) if metric_sum.get(key) else Decimal(0) for key in aggregates}
+            query_sum = {key: metric_sum.get(key) or Decimal(0) for key in aggregates}
 
             result = handler.add_current_month_deltas(query_data, query_sum)
 
@@ -404,7 +403,7 @@ class OCPReportQueryHandlerTest(IamTestCase):
         query_params = self.mocked_query_params(url, OCPCpuView)
         handler = OCPReportQueryHandler(query_params)
         results = handler.get_tag_filter_keys()
-        self.assertEqual(results, ["tag:" + tag_keys[0]])
+        self.assertEqual(results, [f"tag:{tag_keys[0]}"])
 
     def test_get_tag_group_by_keys(self):
         """Test that group_by params with tag keys are returned."""
@@ -418,7 +417,7 @@ class OCPReportQueryHandlerTest(IamTestCase):
         query_params = self.mocked_query_params(url, OCPCpuView)
         handler = OCPReportQueryHandler(query_params)
         results = handler.get_tag_group_by_keys()
-        self.assertEqual(results, ["tag:" + group_by_key])
+        self.assertEqual(results, [f"tag:{group_by_key}"])
 
     def test_set_tag_filters(self):
         """Test that tag filters are created properly."""
@@ -459,7 +458,7 @@ class OCPReportQueryHandlerTest(IamTestCase):
         handler = OCPReportQueryHandler(query_params)
         group_by = handler._get_tag_group_by()
         group = group_by[0]
-        expected = "pod_labels__" + group_by_key
+        expected = f"pod_labels__{group_by_key}"
         self.assertEqual(len(group_by), 1)
         self.assertEqual(group[0], expected)
 
@@ -625,7 +624,7 @@ class OCPReportQueryHandlerTest(IamTestCase):
                 self.assertIsNotNone(result)
                 self.assertLessEqual(abs(expected - result), tolerance)
 
-    def test_source_uuid_mapping(self):  # noqa: C901
+    def test_source_uuid_mapping(self):    # noqa: C901
         """Test source_uuid is mapped to the correct source."""
         endpoints = [OCPCostView, OCPCpuView, OCPVolumeView, OCPMemoryView]
         with tenant_context(self.tenant):
@@ -643,11 +642,13 @@ class OCPReportQueryHandlerTest(IamTestCase):
                     for _, value in dictionary.items():
                         if isinstance(value, list):
                             for item in value:
-                                if isinstance(item, dict):
-                                    if "values" in item.keys():
-                                        self.assertEqual(len(item["values"]), 1)
-                                        value = item["values"][0]
-                                        source_uuid_list.extend(value.get("source_uuid"))
+                                if (
+                                    isinstance(item, dict)
+                                    and "values" in item.keys()
+                                ):
+                                    self.assertEqual(len(item["values"]), 1)
+                                    value = item["values"][0]
+                                    source_uuid_list.extend(value.get("source_uuid"))
         self.assertNotEquals(source_uuid_list, [])
         for source_uuid in source_uuid_list:
             self.assertIn(source_uuid, expected_source_uuids)

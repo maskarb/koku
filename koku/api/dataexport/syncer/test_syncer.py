@@ -85,28 +85,29 @@ class AwsS3SyncerTestWithData(MasuTestCase):
             self.azure_provider,
             self.gcp_provider,
         ]
-        expected_filter_calls = []
+        expected_filter_calls = [
+            call(
+                Prefix=(
+                    f"{settings.S3_BUCKET_PATH}/{schema_name}/"
+                    f"{provider.type.lower().replace('-local', '')}/{provider.uuid}/"
+                    f"{day.year:04d}/{day.month:02d}/{day.day:02d}/"
+                )
+            )
+            for day, provider in product(days, expected_providers)
+        ]
 
-        for day, provider in product(days, expected_providers):
-            expected_filter_calls.append(
-                call(
-                    Prefix=(
-                        f"{settings.S3_BUCKET_PATH}/{schema_name}/"
-                        f"{provider.type.lower().replace('-local', '')}/{provider.uuid}/"
-                        f"{day.year:04d}/{day.month:02d}/{day.day:02d}/"
-                    )
+
+        expected_filter_calls.extend(
+            call(
+                Prefix=(
+                    f"{settings.S3_BUCKET_PATH}/{schema_name}/"
+                    f"{provider.type.replace('-local', '').lower()}/{provider.uuid}/"
+                    f"{month.year:04d}/{month.month:02d}/00/"
                 )
             )
-        for month, provider in product(months, expected_providers):
-            expected_filter_calls.append(
-                call(
-                    Prefix=(
-                        f"{settings.S3_BUCKET_PATH}/{schema_name}/"
-                        f"{provider.type.replace('-local', '').lower()}/{provider.uuid}/"
-                        f"{month.year:04d}/{month.month:02d}/00/"
-                    )
-                )
-            )
+            for month, provider in product(months, expected_providers)
+        )
+
         return expected_filter_calls
 
     @patch("api.dataexport.syncer.boto3")

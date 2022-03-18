@@ -41,7 +41,7 @@ class CostModelMetricsMapViewTest(IamTestCase):
         client = APIClient()
 
         params = {"source_type": Provider.PROVIDER_OCP}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -51,7 +51,7 @@ class CostModelMetricsMapViewTest(IamTestCase):
         client = APIClient()
 
         params = {"source_type": Provider.PROVIDER_OCP}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.post(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
@@ -61,7 +61,7 @@ class CostModelMetricsMapViewTest(IamTestCase):
         client = APIClient()
 
         params = {"source_type": Provider.PROVIDER_OCP}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.delete(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
@@ -75,7 +75,7 @@ class CostModelMetricsMapViewTest(IamTestCase):
         client = APIClient()
 
         params = {"source_type": Provider.PROVIDER_OCP}
-        url = url + "?" + urlencode(params, quote_via=quote_plus) + "&limit=11"
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}&limit=11'
         response = client.get(url, **self.headers).data["data"]
         self.assertEquals(len(COST_MODEL_METRIC_MAP), len(response))
         for metric in COST_MODEL_METRIC_MAP:
@@ -94,7 +94,7 @@ class CostModelMetricsMapViewTest(IamTestCase):
         url = reverse("metrics")
         client = APIClient()
 
-        url = url + f"?source_type={Provider.PROVIDER_AWS}"
+        url = f"{url}?source_type={Provider.PROVIDER_AWS}"
         response_data = client.get(url, **self.headers).data["data"]
         self.assertFalse(response_data)
 
@@ -104,7 +104,7 @@ class CostModelMetricsMapViewTest(IamTestCase):
         """
         url = reverse("metrics")
         client = APIClient()
-        data = client.get(url + "?limit=1&offset=1", **self.headers).data["data"]
+        data = client.get(f'{url}?limit=1&offset=1', **self.headers).data["data"]
         actual_metric = data[0].get("metric")
         expected_metric = COST_MODEL_METRIC_MAP[1].get("metric")
         self.assertEqual(expected_metric, actual_metric)
@@ -118,7 +118,7 @@ class CostModelMetricsMapViewTest(IamTestCase):
         client = APIClient()
 
         params = {"limit": "foo"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -127,7 +127,10 @@ class CostModelMetricsMapViewTest(IamTestCase):
         url = reverse("metrics")
         offset = len(COST_MODEL_METRIC_MAP)
         client = APIClient()
-        data = client.get(url + "?limit=1&offset=" + str(offset), **self.headers).data["data"]
+        data = client.get(f'{url}?limit=1&offset={offset}', **self.headers).data[
+            "data"
+        ]
+
         self.assertEqual([], data)
 
     def test_invalid_json_500_response(self):
@@ -153,5 +156,5 @@ class CostModelMetricsMapViewTest(IamTestCase):
         url = reverse("metrics")
         offset = len(COST_MODEL_METRIC_MAP)
         client = APIClient()
-        data = client.get(url + "?limit=&offset=" + str(offset), **self.headers).data["data"]
+        data = client.get(f'{url}?limit=&offset={offset}', **self.headers).data["data"]
         self.assertEqual([], data)

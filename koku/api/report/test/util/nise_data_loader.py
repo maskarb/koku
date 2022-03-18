@@ -103,9 +103,11 @@ class NiseDataLoader(DataLoader):
             for report in os.scandir(report_path):
                 shutil.move(report.path, f"{base_path}/{report.name}")
             for report in [f.path for f in os.scandir(base_path)]:
-                if os.path.isdir(report):
-                    continue
-                elif "manifest" in report.lower():
+                if (
+                    os.path.isdir(report)
+                    or not os.path.isdir(report)
+                    and "manifest" in report.lower()
+                ):
                     continue
                 self.process_report(report, "PLAIN", provider_type, provider, manifest, bill_date=bill_date)
             with patch("masu.processor.tasks.chain"):
@@ -176,9 +178,11 @@ class NiseDataLoader(DataLoader):
             for report in os.scandir(report_path):
                 if os.path.isdir(report):
                     for report in [f.path for f in os.scandir(f"{report_path}/{report.name}")]:
-                        if os.path.isdir(report):
-                            continue
-                        elif "manifest" in report.lower():
+                        if (
+                            os.path.isdir(report)
+                            or not os.path.isdir(report)
+                            and "manifest" in report.lower()
+                        ):
                             continue
                         self.process_report(report, "GZIP", provider_type, provider, manifest)
             with patch("masu.processor.tasks.chain"), patch.object(settings, "AUTO_DATA_INGEST", False):
@@ -243,9 +247,11 @@ class NiseDataLoader(DataLoader):
 
             report_path = self.build_report_path(provider_type, bill_date, base_path)
             for report in os.scandir(report_path):
-                if os.path.isdir(report):
-                    continue
-                elif "manifest" in report.name.lower():
+                if (
+                    os.path.isdir(report)
+                    or not os.path.isdir(report)
+                    and "manifest" in report.name.lower()
+                ):
                     continue
                 self.process_report(report, "PLAIN", provider_type, provider, manifest)
             with patch("masu.processor.tasks.chain"), patch.object(settings, "AUTO_DATA_INGEST", False):

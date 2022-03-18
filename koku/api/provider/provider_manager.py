@@ -143,9 +143,15 @@ class ProviderManager:
                 query = OCPUsageReportPeriod.objects.filter(
                     provider=provider, report_period_start=period_start
                 ).first()
-            elif provider.type == Provider.PROVIDER_AWS or provider.type == Provider.PROVIDER_AWS_LOCAL:
+            elif provider.type in [
+                Provider.PROVIDER_AWS,
+                Provider.PROVIDER_AWS_LOCAL,
+            ]:
                 query = AWSCostEntryBill.objects.filter(provider=provider, billing_period_start=period_start).first()
-            elif provider.type == Provider.PROVIDER_AZURE or provider.type == Provider.PROVIDER_AZURE_LOCAL:
+            elif provider.type in [
+                Provider.PROVIDER_AZURE,
+                Provider.PROVIDER_AZURE_LOCAL,
+            ]:
                 query = AzureCostEntryBill.objects.filter(provider=provider, billing_period_start=period_start).first()
         if query and query.summary_data_creation_datetime:
             stats["summary_data_creation_datetime"] = query.summary_data_creation_datetime.strftime(DATE_TIME_FORMAT)
@@ -165,9 +171,11 @@ class ProviderManager:
             .all()
         )
 
-        months = []
-        for month in manifest_months_query[:2]:
-            months.append(month.billing_period_start_datetime)
+        months = [
+            month.billing_period_start_datetime
+            for month in manifest_months_query[:2]
+        ]
+
         data_updated_date = self.model.data_updated_timestamp
         data_updated_date = data_updated_date.strftime(DATE_TIME_FORMAT) if data_updated_date else data_updated_date
         provider_stats = {"data_updated_date": data_updated_date}
@@ -181,10 +189,11 @@ class ProviderManager:
             ).order_by("manifest_creation_datetime")
 
             for provider_manifest in stats_query.reverse()[:3]:
-                status = {}
                 report_status = CostUsageReportStatus.objects.filter(manifest=provider_manifest).first()
-                status["assembly_id"] = provider_manifest.assembly_id
-                status["billing_period_start"] = provider_manifest.billing_period_start_datetime.date()
+                status = {
+                    "assembly_id": provider_manifest.assembly_id,
+                    "billing_period_start": provider_manifest.billing_period_start_datetime.date(),
+                }
 
                 num_processed_files = CostUsageReportStatus.objects.filter(
                     manifest_id=provider_manifest.id, last_completed_datetime__isnull=False
@@ -220,8 +229,7 @@ class ProviderManager:
         """Get the cost models associated with this provider."""
         with tenant_context(tenant):
             cost_models_map = CostModelMap.objects.filter(provider_uuid=self._uuid)
-        cost_models = [m.cost_model for m in cost_models_map]
-        return cost_models
+        return [m.cost_model for m in cost_models_map]
 
     def update(self, from_sources=False):
         """Check if provider is a sources model."""
@@ -247,9 +255,8 @@ class ProviderManager:
             self.model.delete()
             LOG.info(f"Provider: {self.model.name} removed by {current_user.username}")
         else:
-            err_msg = "User {} does not have permission to delete provider {}".format(
-                current_user.username, str(self.model)
-            )
+            err_msg = f"User {current_user.username} does not have permission to delete provider {str(self.model)}"
+
             raise ProviderManagerError(err_msg)
 
 

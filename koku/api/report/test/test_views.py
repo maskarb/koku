@@ -78,7 +78,7 @@ class ReportViewTest(IamTestCase):
         for endpoint in self.ENDPOINTS:
             with self.subTest(endpoint=endpoint):
                 query = "group_by[invalid]=*"
-                url = reverse(endpoint) + "?" + query
+                url = f'{reverse(endpoint)}?{query}'
                 response = self.client.get(url, **self.headers)
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 

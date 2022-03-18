@@ -120,12 +120,12 @@ class OCPAzureFilterSerializerTest(TestCase):
     def test_all_filter_op_fields(self):
         """Test that the allowed fields pass."""
         for field in OCPAzureFilterSerializer._opfields:
-            field = "and:" + field
+            field = f"and:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = OCPAzureFilterSerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())
         for field in OCPAzureFilterSerializer._opfields:
-            field = "or:" + field
+            field = f"or:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = OCPAzureFilterSerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())
@@ -192,12 +192,12 @@ class OCPAzureGroupBySerializerTest(TestCase):
     def test_all_group_by_op_fields(self):
         """Test that the allowed fields pass."""
         for field in OCPAzureGroupBySerializer._opfields:
-            field = "and:" + field
+            field = f"and:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = OCPAzureGroupBySerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())
         for field in OCPAzureGroupBySerializer._opfields:
-            field = "or:" + field
+            field = f"or:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = OCPAzureGroupBySerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())

@@ -119,7 +119,7 @@ class QueryFilterCollection:
 
         """
         if filters is None:
-            self._filters = list()  # a list of QueryFilter objects
+            self._filters = []
         else:
             if not isinstance(filters, list):
                 raise TypeError("filters must be a list")
@@ -146,8 +146,8 @@ class QueryFilterCollection:
             parameter (object) query object
 
         """
-        error_message = "query_filter can not be defined with other parameters"
         if query_filter and (table or field or operation or parameter):
+            error_message = "query_filter can not be defined with other parameters"
             raise AttributeError(error_message)
 
         if query_filter and query_filter not in self:
@@ -167,10 +167,7 @@ class QueryFilterCollection:
         """
         composed_query = None
         compose_dict = defaultdict(list)
-        operator = "and"
-        if logical_operator == "or":
-            operator = "or"
-
+        operator = "or" if logical_operator == "or" else "and"
         for filt in self._filters:
             filt_key = filt.compose_key()
             compose_dict[filt_key].append(filt)
@@ -186,11 +183,10 @@ class QueryFilterCollection:
                     or_filter = or_filter | filter_item.composed_Q()
             if composed_query is None:
                 composed_query = or_filter
+            elif operator == "or":
+                composed_query = composed_query | or_filter
             else:
-                if operator == "or":
-                    composed_query = composed_query | or_filter
-                else:
-                    composed_query = composed_query & or_filter
+                composed_query = composed_query & or_filter
         return composed_query
 
     def __contains__(self, item):
@@ -236,7 +232,7 @@ class QueryFilterCollection:
         """Return string representation."""
         out = f"{self.__class__}: "
         for filt in self._filters:
-            out += filt.__repr__() + ", "
+            out += f'{filt.__repr__()}, '
         return out
 
     def __len__(self):
@@ -257,8 +253,8 @@ class QueryFilterCollection:
             parameter (object) query object
 
         """
-        error_message = "query_filter can not be defined with other parameters"
         if query_filter and (table or field or operation or parameter):
+            error_message = "query_filter can not be defined with other parameters"
             raise AttributeError(error_message)
 
         if query_filter and query_filter in self:

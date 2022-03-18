@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """ script to download aws pricing lists """
+
 import json
 import logging
 import os
@@ -8,7 +9,7 @@ from urllib.request import urlopen
 from urllib.request import urlretrieve
 
 AWS_API_ENDPOINT = "https://pricing.us-east-1.amazonaws.com"
-AWS_PRICING_INDEX = AWS_API_ENDPOINT + "/offers/v1.0/aws/index.json"
+AWS_PRICING_INDEX = f'{AWS_API_ENDPOINT}/offers/v1.0/aws/index.json'
 PRICE_INDEX = "index.json"
 CACHE_DIR = "./aws_pricing/"
 
@@ -54,7 +55,7 @@ def collect_data():
 
     for offer in index_file["offers"]:
         location = index_file["offers"][offer]["currentVersionUrl"]
-        filename = offer + ".json"
+        filename = f'{offer}.json'
 
         url = urlopen(AWS_API_ENDPOINT + location)
         if not check_etags(filename, url.headers["ETag"]):
@@ -68,16 +69,15 @@ def check_etags(filename, etag):
         param: etag to be compared
         return: boolean
     """
-    etag_file = load_json(CACHE_DIR + "/etags.json")
+    etag_file = load_json(f'{CACHE_DIR}/etags.json')
 
-    if filename in etag_file.keys():
-        if etag == etag_file[filename]:
-            LOG.debug("%s: etags match!", filename)
-            return True
+    if filename in etag_file.keys() and etag == etag_file[filename]:
+        LOG.debug("%s: etags match!", filename)
+        return True
 
     LOG.debug("%s: etags do NOT match!", filename)
     etag_file[filename] = etag
-    save_json(CACHE_DIR + "etags.json", etag_file)
+    save_json(f'{CACHE_DIR}etags.json', etag_file)
     return False
 
 

@@ -268,10 +268,7 @@ class ProviderSerializer(serializers.ModelSerializer):
         """
         super().__init__(instance, data, **kwargs)
 
-        provider_type = None
-        if data and data != empty:
-            provider_type = data.get("type")
-
+        provider_type = data.get("type") if data and data != empty else None
         if provider_type and provider_type.lower() not in LCASE_PROVIDER_CHOICE_LIST:
             key = "type"
             message = f"{provider_type} is not a valid source type."
@@ -438,10 +435,10 @@ class ProviderSerializer(serializers.ModelSerializer):
 
         key_to_check = key_types.get(provider_type, "")
         creds_to_check = self.demo_credentials.get(provider_type, [])
-        for cred in creds_to_check:
-            if credentials.get(key_to_check, True) == cred.get(key_to_check, False):
-                return True
-        return False
+        return any(
+            credentials.get(key_to_check, True) == cred.get(key_to_check, False)
+            for cred in creds_to_check
+        )
 
 
 class AdminProviderSerializer(ProviderSerializer):

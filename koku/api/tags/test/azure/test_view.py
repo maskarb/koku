@@ -43,7 +43,7 @@ class AzureTagsViewTest(IamTestCase):
                 "filter[time_scope_units]": case.get("unit"),
                 "key_only": True,
             }
-            url = url + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -72,7 +72,7 @@ class AzureTagsViewTest(IamTestCase):
                 "filter[time_scope_units]": case.get("unit"),
                 "key_only": False,
             }
-            url = url + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             data = response.json().get("data")
@@ -108,7 +108,7 @@ class AzureTagsViewTest(IamTestCase):
                 "key_only": False,
                 "filter[subscription_guid]": case.get("subscription_guid"),
             }
-            url = url + "?" + urlencode(params, quote_via=quote_plus)
+            url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
             response = client.get(url, **self.headers)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             data = response.json().get("data")
@@ -140,7 +140,7 @@ class AzureTagsViewTest(IamTestCase):
             "filter[time_scope_units]": "day",
             "filter[and:subscription_guid]": subscription_guids,
         }
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 

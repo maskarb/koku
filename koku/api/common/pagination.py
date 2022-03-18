@@ -64,7 +64,7 @@ class StandardResultsSetPagination(LimitOffsetPagination):
     def get_last_link(self):
         """Create last link with partial url rewrite."""
         url = self.request.build_absolute_uri()
-        offset = self.count - self.limit if (self.count - self.limit) >= 0 else 0
+        offset = max(self.count - self.limit, 0)
         last_link = replace_query_param(url, self.offset_query_param, offset)
         last_link = replace_query_param(last_link, self.limit_query_param, self.limit)
         return StandardResultsSetPagination.link_rewrite(self.request, last_link)
@@ -99,8 +99,7 @@ class ListPaginator(StandardResultsSetPagination):
     @property
     def paginated_data_set(self):
         """Paginate the list."""
-        if self.limit > len(self.data_set):
-            self.limit = len(self.data_set)
+        self.limit = min(self.limit, len(self.data_set))
         try:
             data = self.data_set[self.offset : self.offset + self.limit]  # noqa E203
         except IndexError:
@@ -165,9 +164,7 @@ class ReportPagination(StandardResultsSetPagination):
         filter_limit = data.get("filter", {}).get("limit", 0)
         meta = {"count": self.count}
         if self.others:
-            others = 0
-            if self.others > filter_limit:
-                others = self.others - filter_limit
+            others = self.others - filter_limit if self.others > filter_limit else 0
             meta["others"] = others
         response = {
             "meta": meta,
@@ -258,8 +255,7 @@ class OrgUnitPagination(ReportPagination):
         org_data = dataset.get("data")
         for date in org_data:
             if date.get("org_entities"):
-                for entry in date.get("org_entities"):
-                    org_objects.append(entry["id"])
+                org_objects.extend(entry["id"] for entry in date.get("org_entities"))
                 date["org_entities"] = date["org_entities"][self.offset : self.offset + self.limit]  # noqa: E203
         org_objects = set(org_objects)
         self.count = len(org_objects)

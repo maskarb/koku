@@ -49,12 +49,12 @@ class OCPAWSFilterSerializerTest(TestCase):
     def test_all_filter_op_fields(self):
         """Test that the allowed fields pass."""
         for field in OCPAWSFilterSerializer._opfields:
-            field = "and:" + field
+            field = f"and:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = OCPAWSFilterSerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())
         for field in OCPAWSFilterSerializer._opfields:
-            field = "or:" + field
+            field = f"or:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = OCPAWSFilterSerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())
@@ -84,12 +84,12 @@ class OCPAWSGroupBySerializerTest(TestCase):
     def test_all_group_by_op_fields(self):
         """Test that the allowed fields pass."""
         for field in OCPAWSGroupBySerializer._opfields:
-            field = "and:" + field
+            field = f"and:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = OCPAWSGroupBySerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())
         for field in OCPAWSGroupBySerializer._opfields:
-            field = "or:" + field
+            field = f"or:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = OCPAWSGroupBySerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())

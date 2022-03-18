@@ -61,6 +61,6 @@ class OCPAllReportViewTest(IamTestCase):
                     f"group_by[{group_by}]": "*",
                     f"group_by[tag:{group_by_key}]": "*",
                 }
-                url = url + "?" + urlencode(params, quote_via=quote_plus)
+                url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
                 response = client.get(url, **self.headers)
                 self.assertEqual(response.status_code, status.HTTP_200_OK)

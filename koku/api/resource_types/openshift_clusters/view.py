@@ -37,12 +37,12 @@ class OCPClustersView(generics.ListAPIView):
 
     @method_decorator(vary_on_headers(CACHE_RH_IDENTITY_HEADER))
     def list(self, request):
-        # Reads the users values for Openshift cluster id and displays values related to what the user has access to
-        supported_query_params = ["search", "limit"]
         user_access = None
-        error_message = {}
         # Test for only supported query_params
         if self.request.query_params:
+            # Reads the users values for Openshift cluster id and displays values related to what the user has access to
+            supported_query_params = ["search", "limit"]
+            error_message = {}
             for key in self.request.query_params:
                 if key not in supported_query_params:
                     error_message[key] = [{"Unsupported parameter"}]

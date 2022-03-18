@@ -54,7 +54,7 @@ class CloudAccountViewTest(IamTestCase):
         """
         url = reverse("cloud-accounts")
         client = APIClient()
-        data = client.get(url + "?limit=1&offset=1", **self.headers).data["data"]
+        data = client.get(f'{url}?limit=1&offset=1', **self.headers).data["data"]
         if len(data) > 0:
             self.assertEqual(data[0].get("name"), CLOUD_ACCOUNTS[1].get("name"))
             self.assertEqual(1, len(data))
@@ -69,7 +69,7 @@ class CloudAccountViewTest(IamTestCase):
         client = APIClient()
 
         params = {"limit": "foo"}
-        url = url + "?" + urlencode(params, quote_via=quote_plus)
+        url = f'{url}?{urlencode(params, quote_via=quote_plus)}'
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 

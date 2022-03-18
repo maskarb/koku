@@ -30,10 +30,12 @@ def get_cost_type(request):
 
     with schema_context(request.user.customer.schema_name):
         query_settings = UserSettings.objects.all().first()
-        if not query_settings:
-            cost_type = KOKU_DEFAULT_COST_TYPE
-        else:
-            cost_type = query_settings.settings["cost_type"]
+        cost_type = (
+            query_settings.settings["cost_type"]
+            if query_settings
+            else KOKU_DEFAULT_COST_TYPE
+        )
+
     return cost_type
 
 
@@ -81,10 +83,7 @@ class DateHelper:
 
     def __init__(self, utc=False):
         """Initialize when now is."""
-        if utc:
-            self._now = datetime.datetime.now(tz=pytz.UTC)
-        else:
-            self._now = timezone.now()
+        self._now = datetime.datetime.now(tz=pytz.UTC) if utc else timezone.now()
 
     @property
     def now(self):
@@ -199,8 +198,12 @@ class DateHelper:
 
         """
         num_days = self.days_in_month(in_date)
-        dt_next_month = in_date.replace(day=num_days, hour=0, minute=0, second=0, microsecond=0) + self.one_day
-        return dt_next_month
+        return (
+            in_date.replace(
+                day=num_days, hour=0, minute=0, second=0, microsecond=0
+            )
+            + self.one_day
+        )
 
     def previous_month(self, in_date):
         """Return the first of the previous month from the in_date.
@@ -247,9 +250,8 @@ class DateHelper:
         days = (end_midnight - start_midnight + self.one_day).days
 
         # built-in range(start, end, step) requires (start < end) == True
-        day_range = range(days, 0) if days < 0 else range(0, days)
-        output = [start_midnight + datetime.timedelta(i) for i in day_range]
-        return output
+        day_range = range(days, 0) if days < 0 else range(days)
+        return [start_midnight + datetime.timedelta(i) for i in day_range]
 
     def list_months(self, start_date, end_date):
         """Return a list of months from the start date til the end date.
@@ -354,8 +356,7 @@ class DateHelper:
         if not isinstance(date_str, str):
             date_str = str(date_str)
         date_obj = datetime.datetime.strptime(date_str, "%Y%m")
-        gcp_month_start = self.month_start(date_obj)
-        return gcp_month_start
+        return self.month_start(date_obj)
 
     def gcp_find_invoice_months_in_date_range(self, start, end):
         """Finds all the invoice months in a given date range.

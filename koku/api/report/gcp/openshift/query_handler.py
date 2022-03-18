@@ -34,7 +34,7 @@ class OCPGCPReportQueryHandler(GCPReportQueryHandler):
         self._mapper = OCPGCPProviderMap(provider=self.provider, report_type=parameters.report_type)
         # Update which field is used to calculate cost by group by param.
         if is_grouped_by_project(parameters):
-            self._report_type = parameters.report_type + "_by_project"
+            self._report_type = f'{parameters.report_type}_by_project'
             self._mapper = OCPGCPProviderMap(provider=self.provider, report_type=self._report_type)
 
         self.group_by_options = self._mapper.provider_map.get("group_by_options")
@@ -111,9 +111,7 @@ class OCPGCPReportQueryHandler(GCPReportQueryHandler):
 
                 try:
                     ciso8601.parse_datetime(date_str)
-                except ValueError:
-                    return False
-                except TypeError:
+                except (ValueError, TypeError):
                     return False
                 return True
 

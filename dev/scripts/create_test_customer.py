@@ -31,6 +31,7 @@ koku:
   password: Koku Admin Password
 
 """
+
 import argparse
 import os
 import sys
@@ -45,7 +46,7 @@ import requests
 from yaml import safe_load
 
 BASEDIR = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_CONFIG = BASEDIR + "/test_customer.yaml"
+DEFAULT_CONFIG = f'{BASEDIR}/test_customer.yaml'
 SUPPORTED_SOURCES_REAL = ["AWS", "Azure", "OCP", "GCP", "IBM"]
 SUPPORTED_SOURCES = SUPPORTED_SOURCES_REAL + ["AWS-local", "Azure-local", "GCP-local", "IBM-local"]
 
@@ -98,8 +99,11 @@ class KokuCustomerOnboarder:
         # on any API request
         print("\nAdding customer...")
         response = wallclock(
-            requests.get, self.endpoint_base + "reports/azure/costs/", headers=get_headers(self.auth_token)
+            requests.get,
+            f'{self.endpoint_base}reports/azure/costs/',
+            headers=get_headers(self.auth_token),
         )
+
         print(f"Response: [{response.status_code}] {response.text}")
         if response.status_code not in [200, 201]:
             time.sleep(SLEEP)
@@ -121,8 +125,12 @@ class KokuCustomerOnboarder:
             }
 
             response = wallclock(
-                requests.post, self.endpoint_base + "sources/", headers=get_headers(self.auth_token), json=data
+                requests.post,
+                f'{self.endpoint_base}sources/',
+                headers=get_headers(self.auth_token),
+                json=data,
             )
+
             print(f"Response: [{response.status_code}] {response.reason}")
             if response.status_code not in [200, 201]:
                 time.sleep(SLEEP)
@@ -142,7 +150,7 @@ class KokuCustomerOnboarder:
             source_type = source.get("source_type", "unknown")
             credentials = source.get("authentication", {}).get("credentials", {})
             data_source = source.get("billing_source", {}).get("data_source", {})
-            source_name = source.get("source_name", "%s_source" % source_type.lower())
+            source_name = source.get("source_name", f"{source_type.lower()}_source")
 
             billing_sql = """
 SELECT id FROM api_providerbillingsource
@@ -201,7 +209,7 @@ VALUES(%s, %s, %s, %s, %s, 1, 1, False, True)
                 if source_type not in SUPPORTED_SOURCES:
                     print(f"{source_type} is not a valid source type. Skipping.")
                     continue
-                print("Creating %s source..." % source_type)
+                print(f"Creating {source_type} source...")
                 wallclock(self.create_provider_source, source)
 
     def onboard(self):
@@ -227,8 +235,7 @@ def get_token(account_id, username, email):
     }
     header = {"identity": identity, "entitlements": {"cost_management": {"is_entitled": "True"}}}
     json_identity = json_dumps(header)
-    token = b64encode(json_identity.encode("utf-8"))
-    return token
+    return b64encode(json_identity.encode("utf-8"))
 
 
 def load_yaml(filename):

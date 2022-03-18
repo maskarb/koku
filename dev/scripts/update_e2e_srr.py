@@ -7,6 +7,7 @@
 Search for the koku SOURCE_REPOSITORY_REF setting in the
 e2e-deploy buildfactory dir koku.yaml file.
 """
+
 import logging
 import os
 import re
@@ -26,14 +27,19 @@ LOG = logging.getLogger("update_e2e_srr")
 # To be able to replace XXXX with the correct ref
 # reading the yaml and dumping the updated yaml was not used
 # so that the whole file would not be reordered
-REGEX = "^(.*?name: SOURCE_REPOSITORY_REF.*?" + os.linesep + ".*?required: .*?" + os.linesep + ".*?value: )(.+?)$"
+REGEX = (
+    f"^(.*?name: SOURCE_REPOSITORY_REF.*?{os.linesep}.*?required: .*?"
+    + os.linesep
+    + ".*?value: )(.+?)$"
+)
+
 SRR = re.compile(REGEX, flags=re.MULTILINE)
 
 
 def set_srr(yaml_file_name, git_ref):
     # This is to ensure that the replacement has no issues since part of the grouping is multiline
     def repl(match):
-        return "{}{}".format(match.group(1), git_ref)
+        return f"{match.group(1)}{git_ref}"
 
     target_file = os.path.join(os.environ["E2E_REPO"], "buildfactory", yaml_file_name)
     LOG.info(f'Processing "{target_file}"')

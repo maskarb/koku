@@ -135,7 +135,7 @@ class QueryFilterCollectionTest(TestCase):
     def test_constructor(self):
         """Test the constructor using valid QueryFilter instances."""
         filters = []
-        for _ in range(0, 3):
+        for _ in range(3):
             filt = QueryFilter(
                 table=self.fake.word(), field=self.fake.word(), operation=self.fake.word(), parameter=self.fake.word()
             )
@@ -159,7 +159,7 @@ class QueryFilterCollectionTest(TestCase):
         """Test the add() method using a QueryFilter instance."""
         filters = []
         qf_coll = QueryFilterCollection()
-        for _ in range(0, 3):
+        for _ in range(3):
             filt = QueryFilter(self.fake.word(), self.fake.word(), self.fake.word(), self.fake.word())
             filters.append(filt)
             qf_coll.add(query_filter=filt)

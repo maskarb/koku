@@ -65,8 +65,7 @@ class TagView(ReportView):
             lizt = []
             for dikt in output.get("data"):
                 if isinstance(dikt.get("values"), list):
-                    for val in dikt.get("values"):
-                        lizt.append(val)
+                    lizt.extend(iter(dikt.get("values")))
                 else:
                     lizt.append(dikt.get("values"))
             output["data"] = lizt
@@ -80,7 +79,8 @@ class TagView(ReportView):
 
     def validate_key(self, key):
         """Validate that tag key exists."""
-        count = 0
-        for handler in self.tag_handler:
-            count += handler.objects.filter(key=key).count()
+        count = sum(
+            handler.objects.filter(key=key).count() for handler in self.tag_handler
+        )
+
         return count != 0

@@ -405,8 +405,10 @@ class OCPGCPQueryHandlerTest(IamTestCase):
         # test query output
         for element in data:
             if element.get("date") == str(yesterday):
-                for service in element.get("services"):
-                    correctlst.append(service.get("service"))
+                correctlst.extend(
+                    service.get("service") for service in element.get("services")
+                )
+
         for element in data:
             # Check if there is any data in services
             for service in element.get("services"):
@@ -455,7 +457,7 @@ class OCPGCPQueryHandlerTest(IamTestCase):
         for filt in handler._mapper.report_type_map.get("filter"):
             if filt:
                 qf = QueryFilter(**filt)
-                filters.update({qf.composed_query_string(): qf.parameter})
+                filters[qf.composed_query_string()] = qf.parameter
         current_totals = self.get_totals_by_time_scope(aggregates, filters)
         self.assertIsNotNone(total.get("cost"))
         self.assertEqual(total.get("cost", {}).get("total", {}).get("value", 0), current_totals.get("cost_total", 1))
@@ -493,7 +495,7 @@ class OCPGCPQueryHandlerTest(IamTestCase):
         for filt in handler._mapper.report_type_map.get("filter"):
             if filt:
                 qf = QueryFilter(**filt)
-                filters.update({qf.composed_query_string(): qf.parameter})
+                filters[qf.composed_query_string()] = qf.parameter
         current_totals = self.get_totals_by_time_scope(aggregates, filters)
         self.assertIsNotNone(total.get("cost"))
         self.assertEqual(total.get("cost", {}).get("total", {}).get("value", 0), current_totals.get("cost_total", 1))
@@ -529,7 +531,7 @@ class OCPGCPQueryHandlerTest(IamTestCase):
         for filt in handler._mapper.report_type_map.get("filter"):
             if filt:
                 qf = QueryFilter(**filt)
-                filters.update({qf.composed_query_string(): qf.parameter})
+                filters[qf.composed_query_string()] = qf.parameter
         current_totals = self.get_totals_by_time_scope(aggregates, filters)
         self.assertIsNotNone(total.get("cost"))
         self.assertEqual(total.get("cost", {}).get("total", {}).get("value", 0), current_totals.get("cost_total", 1))
@@ -821,7 +823,7 @@ class OCPGCPQueryHandlerTest(IamTestCase):
                 current = data_point
 
     @skip("Skipping until unittests are on Trino.")
-    def test_source_uuid_mapping(self):  # noqa: C901
+    def test_source_uuid_mapping(self):    # noqa: C901
         """Test source_uuid is mapped to the correct source."""
         endpoints = [OCPGCPCostView, OCPGCPInstanceTypeView, OCPGCPStorageView]
         with tenant_context(self.tenant):
@@ -839,10 +841,12 @@ class OCPGCPQueryHandlerTest(IamTestCase):
                     for _, value in dictionary.items():
                         if isinstance(value, list):
                             for item in value:
-                                if isinstance(item, dict):
-                                    if "values" in item.keys():
-                                        value = item["values"][0]
-                                        source_uuid_list.extend(value.get("source_uuid"))
+                                if (
+                                    isinstance(item, dict)
+                                    and "values" in item.keys()
+                                ):
+                                    value = item["values"][0]
+                                    source_uuid_list.extend(value.get("source_uuid"))
         self.assertNotEquals(source_uuid_list, [])
         for source_uuid in source_uuid_list:
             self.assertIn(source_uuid, expected_source_uuids)

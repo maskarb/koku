@@ -109,52 +109,53 @@ class AwsS3Syncer(SyncerInterface):
             date_range (tuple): Pair of date objects of inclusive start and exclusive end dates for which to sync data.
 
         """
-        if settings.ENABLE_S3_ARCHIVING:
-            LOG.info(
-                "Beginning sync_bucket to %s for %s from %s to %s",
-                s3_destination_bucket_name,
-                schema_name,
-                date_range[0],
-                date_range[1],
+        if not settings.ENABLE_S3_ARCHIVING:
+            return
+        LOG.info(
+            "Beginning sync_bucket to %s for %s from %s to %s",
+            s3_destination_bucket_name,
+            schema_name,
+            date_range[0],
+            date_range[1],
+        )
+        start_date, end_date = date_range
+        # rrule is inclusive for both dates, so we need to make end_date exclusive
+        end_date = end_date - timedelta(days=1)
+        days = rrule(DAILY, dtstart=start_date, until=end_date)
+        months = rrule(MONTHLY, dtstart=start_date, until=end_date)
+        s3_destination_bucket = self.s3_resource.Bucket(s3_destination_bucket_name)
+        providers = Provider.objects.filter(customer__schema_name=schema_name).all()
+
+        # Copy the specific month level files
+        for month, provider in product(months, providers):
+            # We need to normalize capitalization and "-local" dev providers.
+            provider_slug = provider.type.lower().split("-")[0]
+            prefix = (
+                f"{settings.S3_BUCKET_PATH}/{schema_name}/"
+                f"{provider_slug}/{provider.uuid}/"
+                f"{month.year:04d}/{month.month:02d}/00/"
             )
-            start_date, end_date = date_range
-            # rrule is inclusive for both dates, so we need to make end_date exclusive
-            end_date = end_date - timedelta(days=1)
-            days = rrule(DAILY, dtstart=start_date, until=end_date)
-            months = rrule(MONTHLY, dtstart=start_date, until=end_date)
-            s3_destination_bucket = self.s3_resource.Bucket(s3_destination_bucket_name)
-            providers = Provider.objects.filter(customer__schema_name=schema_name).all()
+            LOG.debug("sync_bucket checking prefix %s", prefix)
+            for source_object in self.s3_source_bucket.objects.filter(Prefix=prefix):
+                self._copy_object(s3_destination_bucket, source_object)
 
-            # Copy the specific month level files
-            for month, provider in product(months, providers):
-                # We need to normalize capitalization and "-local" dev providers.
-                provider_slug = provider.type.lower().split("-")[0]
-                prefix = (
-                    f"{settings.S3_BUCKET_PATH}/{schema_name}/"
-                    f"{provider_slug}/{provider.uuid}/"
-                    f"{month.year:04d}/{month.month:02d}/00/"
-                )
-                LOG.debug("sync_bucket checking prefix %s", prefix)
-                for source_object in self.s3_source_bucket.objects.filter(Prefix=prefix):
-                    self._copy_object(s3_destination_bucket, source_object)
-
-            # Copy all the day files
-            for day, provider in product(days, providers):
-                # We need to normalize capitalization and "-local" dev providers.
-                provider_slug = provider.type.lower().split("-")[0]
-                prefix = (
-                    f"{settings.S3_BUCKET_PATH}/{schema_name}/"
-                    f"{provider_slug}/{provider.uuid}/"
-                    f"{day.year:04d}/{day.month:02d}/{day.day:02d}/"
-                )
-                LOG.debug("sync_bucket checking prefix %s", prefix)
-                for source_object in self.s3_source_bucket.objects.filter(Prefix=prefix):
-                    self._copy_object(s3_destination_bucket, source_object)
-
-            LOG.info(
-                "Completed sync_bucket to %s for %s from %s to %s",
-                s3_destination_bucket_name,
-                schema_name,
-                date_range[0],
-                date_range[1],
+        # Copy all the day files
+        for day, provider in product(days, providers):
+            # We need to normalize capitalization and "-local" dev providers.
+            provider_slug = provider.type.lower().split("-")[0]
+            prefix = (
+                f"{settings.S3_BUCKET_PATH}/{schema_name}/"
+                f"{provider_slug}/{provider.uuid}/"
+                f"{day.year:04d}/{day.month:02d}/{day.day:02d}/"
             )
+            LOG.debug("sync_bucket checking prefix %s", prefix)
+            for source_object in self.s3_source_bucket.objects.filter(Prefix=prefix):
+                self._copy_object(s3_destination_bucket, source_object)
+
+        LOG.info(
+            "Completed sync_bucket to %s for %s from %s to %s",
+            s3_destination_bucket_name,
+            schema_name,
+            date_range[0],
+            date_range[1],
+        )

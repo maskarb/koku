@@ -206,12 +206,12 @@ class FilterSerializerTest(TestCase):
     def test_all_filter_op_fields(self):
         """Test that the allowed fields pass."""
         for field in FilterSerializer._opfields:
-            field = "and:" + field
+            field = f"and:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = FilterSerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())
         for field in FilterSerializer._opfields:
-            field = "or:" + field
+            field = f"or:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = FilterSerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())
@@ -315,12 +315,12 @@ class GroupBySerializerTest(TestCase):
     def test_all_group_by_op_fields(self):
         """Test that the allowed fields pass."""
         for field in GroupBySerializer._opfields:
-            field = "and:" + field
+            field = f"and:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = GroupBySerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())
         for field in GroupBySerializer._opfields:
-            field = "or:" + field
+            field = f"or:{field}"
             filter_param = {field: ["1", "2"]}
             serializer = GroupBySerializer(data=filter_param)
             self.assertTrue(serializer.is_valid())

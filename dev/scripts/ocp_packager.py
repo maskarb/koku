@@ -34,7 +34,7 @@ def generate_package(csv_files, cluster_id):
 
     # Generate UUID and capture timestamp.
     file_uuid = uuid.uuid4()
-    today = datetime.today()
+    today = datetime.now()
 
     # Copy the .csv report file to the staging directory with uuid prepended.
     dst_file_list = []
@@ -46,19 +46,20 @@ def generate_package(csv_files, cluster_id):
         dst_file_list.append(dst_file_name)
 
     # Populate package dictionary
-    package_dict = {}
-    package_dict["files"] = dst_file_list
-    package_dict["date"] = str(today)
-    package_dict["uuid"] = str(file_uuid)
-    package_dict["cluster_id"] = cluster_id
+    package_dict = {
+        "files": dst_file_list,
+        "date": str(today),
+        "uuid": str(file_uuid),
+        "cluster_id": cluster_id,
+    }
 
     # Write dictionary to manifest.json file in staging directory
-    manifest_file = "{}/{}".format(temp_dir, "manifest.json")
+    manifest_file = f"{temp_dir}/manifest.json"
     with open(manifest_file, "w") as file:
         file.write(json.dumps(package_dict))
 
     # Create .tar.gz of the temporary directory contents.
-    tarball_file = "{}/{}".format(os.getcwd(), "payload.tar.gz")
+    tarball_file = f"{os.getcwd()}/payload.tar.gz"
     with tarfile.open(tarball_file, "w:gz") as tar:
         tar.add(temp_dir, arcname=os.path.sep)
 
