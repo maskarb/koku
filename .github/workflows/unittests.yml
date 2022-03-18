@@ -18,8 +18,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - run: echo "${{github.event.pull_request.head.repo.full_name}}"
-
       - name: Get changed files
         id: changed-files
         uses: tj-actions/changed-files@v13
@@ -29,7 +27,7 @@ jobs:
             koku/
             .github/postgres
             .github/scripts/check_migrations.sh
-            .github/workflows/unittests.yml
+            # .github/workflows/unittests.yml
             Pipfile.lock
 
       - id: check-files
@@ -40,7 +38,7 @@ jobs:
 
   unit-tests:
     needs: setup
-    if: ${{ needs.setup.outputs.run-tests == 'true' }} || ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    if: ${{ needs.setup.outputs.run-tests == 'true' }} || ${{ github.event.pull_request.head.repo.full_name != "project-koku/koku" }}
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
